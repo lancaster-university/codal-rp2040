@@ -1,24 +1,66 @@
-project(codal-rp2040)
+cmake_minimum_required(VERSION 3.13)
+enable_language(ASM)
+
+project( codal-rp2040 )
 
 include("${CODAL_UTILS_LOCATION}")
 
-set(PROCESSOR_INCLUDES "pico-sdk/src/rp2040/")
+set(HAL_RP2040_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/pico-sdk/src/rp2040")
+set(HAL_RP2_COMMON_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/pico-sdk/src/rp2_common")
+set(HAL_COMMON_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/pico-sdk/src/common")
+set(HAL_HOST_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/pico-sdk/src/host")
 
-add_subdirectory("")
-
-RECURSIVE_FIND_DIR(PROCESSOR_DIR_INCLUDES "${PROCESSOR_INCLUDES}")
+# RECURSIVE_FIND_DIR(PROCESSOR_DIR_INCLUDES "${PROCESSOR_INCLUDE_ROOT}", "*.h")
+# RECURSIVE_FIND_DIR(HAL_DIR_INCLUDES "${PROCESSOR_INCLUDES}", "*.h")
 RECURSIVE_FIND_DIR(TOP_LEVEL_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/inc" "*.h")
-RECURSIVE_FIND_FILE(TOP_LEVEL_SOURCE0 "${CMAKE_CURRENT_SOURCE_DIR}/src" "*.cpp")
-RECURSIVE_FIND_FILE(TOP_LEVEL_SOURCE1 "${CMAKE_CURRENT_SOURCE_DIR}/src" "*.c")
+RECURSIVE_FIND_FILE(TOP_LEVEL_SOURCE0 "${CMAKE_CURRENT_SOURCE_DIR}/source" "*.cpp")
+RECURSIVE_FIND_FILE(TOP_LEVEL_SOURCE1 "${CMAKE_CURRENT_SOURCE_DIR}/source" "*.c")
 
-#RECURSIVE_FIND_FILE(TOP_LEVEL_SOURCE "${ASF}" "*.[cs]"
+# pico_sdk_init()
+
+# set(HAL_INCLUDES 
+#     "${HAL_RP2_COMMON_ROOT}/hardware_gpio/include/hardware/"
+#     "${HAL_RP2_COMMON_ROOT}/hardware_timer/include/hardware/"
+# )
+# set(HAL_SOURCE
+#     "${HAL_RP2_COMMON_ROOT}/hardware_gpio/gpio.c"
+#     "${HAL_RP2_COMMON_ROOT}/hardware_timer/timer.c"
+# )
+
+
+set(PICO_SDK_PATH "${CMAKE_CURRENT_SOURCE_DIR}/pico-sdk")
+set(PICO_PLATFORM "RP2040")
+set(PICO_TARGET "PICO")
+
+# set(PICO_DEFAULT_BOOT_STAGE2 "boot2_w25q080") # second stage bootloader, read from flash chip
+
+include(pico-util.cmake)
+include(${HAL_COMMON_ROOT}/pico_base/generate_config_header.cmake)
+
+add_subdirectory(${HAL_COMMON_ROOT})
+add_subdirectory(${HAL_RP2_COMMON_ROOT})
+add_subdirectory(${HAL_RP2040_ROOT})
+
+set(TARGET_DEPS 
+    pico_sync
+    hardware_sync
+    hardware_irq
+    hardware_gpio
+    hardware_regs
+    hardware_structs)
+    
+
+
+include_directories(${HAL_INCLUDES})
+
 # create our target
-add_library(codal-rp2040 ${TOP_LEVEL_SOURCE} ${TOP_LEVEL_SOURCE0} ${TOP_LEVEL_SOURCE1})
+add_library(codal-rp2040 ${TOP_LEVEL_SOURCE} ${TOP_LEVEL_SOURCE0} ${TOP_LEVEL_SOURCE1} ${HAL_SOURCE})
 
-target_link_libraries(codal-rp2040 codal-core ${OBJECT_FILES} ${ARCHIVE_FILES})
+
+target_link_libraries(codal-rp2040 codal-core ${OBJECT_FILES} ${ARCHIVE_FILES} ${TARGET_DEPS})
 
 #set_target_properties(codal-samd PROPERTIES LINKER_LANGUAGE CXX)
 
 message("${PROCESSOR_DIR_INCLUDES} ${TOP_LEVEL_INCLUDE_DIRS}")
 # expose it to parent cmake.
-target_include_directories(codal-rp2040 PUBLIC ${TOP_LEVEL_INCLUDE_DIRS} ${PROCESSOR_DIR_INCLUDES})
+target_include_directories(codal-rp2040 PUBLIC ${TOP_LEVEL_INCLUDE_DIRS} ${PROCESSOR_DIR_INCLUDES} ${HAL_INCLUDES})
