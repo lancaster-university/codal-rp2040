@@ -1,0 +1,24 @@
+project(codal-rp2040)
+
+include("${CODAL_UTILS_LOCATION}")
+
+set(PROCESSOR_INCLUDES "pico-sdk/src/rp2040/")
+
+add_subdirectory("")
+
+RECURSIVE_FIND_DIR(PROCESSOR_DIR_INCLUDES "${PROCESSOR_INCLUDES}")
+RECURSIVE_FIND_DIR(TOP_LEVEL_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/inc" "*.h")
+RECURSIVE_FIND_FILE(TOP_LEVEL_SOURCE0 "${CMAKE_CURRENT_SOURCE_DIR}/src" "*.cpp")
+RECURSIVE_FIND_FILE(TOP_LEVEL_SOURCE1 "${CMAKE_CURRENT_SOURCE_DIR}/src" "*.c")
+
+#RECURSIVE_FIND_FILE(TOP_LEVEL_SOURCE "${ASF}" "*.[cs]"
+# create our target
+add_library(codal-rp2040 ${TOP_LEVEL_SOURCE} ${TOP_LEVEL_SOURCE0} ${TOP_LEVEL_SOURCE1})
+
+target_link_libraries(codal-rp2040 codal-core ${OBJECT_FILES} ${ARCHIVE_FILES})
+
+#set_target_properties(codal-samd PROPERTIES LINKER_LANGUAGE CXX)
+
+message("${PROCESSOR_DIR_INCLUDES} ${TOP_LEVEL_INCLUDE_DIRS}")
+# expose it to parent cmake.
+target_include_directories(codal-rp2040 PUBLIC ${TOP_LEVEL_INCLUDE_DIRS} ${PROCESSOR_DIR_INCLUDES})
