@@ -119,3 +119,7 @@ endfunction()
 function(pico_add_doxygen_exclude SOURCE_DIR)
     # ignore doxygen
 endfunction()
+
+function(pico_message_debug MESSAGE)
+    # ignore debug
+endif()

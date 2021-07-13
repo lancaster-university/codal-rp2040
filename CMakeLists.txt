@@ -16,18 +16,6 @@ RECURSIVE_FIND_DIR(TOP_LEVEL_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/inc" "*.h
 RECURSIVE_FIND_FILE(TOP_LEVEL_SOURCE0 "${CMAKE_CURRENT_SOURCE_DIR}/source" "*.cpp")
 RECURSIVE_FIND_FILE(TOP_LEVEL_SOURCE1 "${CMAKE_CURRENT_SOURCE_DIR}/source" "*.c")
 
-# pico_sdk_init()
-
-# set(HAL_INCLUDES 
-#     "${HAL_RP2_COMMON_ROOT}/hardware_gpio/include/hardware/"
-#     "${HAL_RP2_COMMON_ROOT}/hardware_timer/include/hardware/"
-# )
-# set(HAL_SOURCE
-#     "${HAL_RP2_COMMON_ROOT}/hardware_gpio/gpio.c"
-#     "${HAL_RP2_COMMON_ROOT}/hardware_timer/timer.c"
-# )
-
-
 set(PICO_SDK_PATH "${CMAKE_CURRENT_SOURCE_DIR}/pico-sdk")
 set(PICO_PLATFORM "RP2040")
 set(PICO_TARGET "PICO")
@@ -42,20 +30,18 @@ add_subdirectory(${HAL_RP2_COMMON_ROOT})
 add_subdirectory(${HAL_RP2040_ROOT})
 
 set(TARGET_DEPS 
+    pico_stdlib
     pico_sync
     hardware_sync
     hardware_irq
     hardware_gpio
     hardware_regs
     hardware_structs)
-    
-
 
 include_directories(${HAL_INCLUDES})
 
 # create our target
 add_library(codal-rp2040 ${TOP_LEVEL_SOURCE} ${TOP_LEVEL_SOURCE0} ${TOP_LEVEL_SOURCE1} ${HAL_SOURCE})
-
 
 target_link_libraries(codal-rp2040 codal-core ${OBJECT_FILES} ${ARCHIVE_FILES} ${TARGET_DEPS})
 
