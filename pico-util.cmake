@@ -122,4 +122,4 @@ endfunction()
 
 function(pico_message_debug MESSAGE)
     # ignore debug
-endif()
+endfunction()
