@@ -32,6 +32,7 @@ add_subdirectory(${HAL_RP2040_ROOT})
 set(TARGET_DEPS 
     pico_stdlib
     pico_sync
+    cmsis_core
     hardware_sync
     hardware_irq
     hardware_gpio
