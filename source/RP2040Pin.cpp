@@ -130,6 +130,13 @@ int RP2040Pin::getDigitalValue()
         disconnect();
         gpio_init(name);
         gpio_set_dir(name, GPIO_IN);
+
+        if (pullMode == PullMode::Up)
+            gpio_set_pulls(name,true, false);
+        else if (pullMode == PullMode::Down)
+            gpio_set_pulls(name, false, true);
+        else
+            gpio_set_pulls(name, false, false);
     }
 
     return gpio_get(name);
