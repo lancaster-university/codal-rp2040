@@ -21,6 +21,7 @@ list(APPEND TOP_LEVEL_SOURCE0 "asm/CortexContextSwitch.s")
 set(PICO_SDK_PATH "${CMAKE_CURRENT_SOURCE_DIR}/pico-sdk")
 set(PICO_PLATFORM "RP2040")
 set(PICO_TARGET "PICO")
+set(PICO_CONFIG_HEADER_FILES "${CMAKE_CURRENT_SOURCE_DIR}/inc/sdk_config.h")
 
 # set(PICO_DEFAULT_BOOT_STAGE2 "boot2_w25q080") # second stage bootloader, read from flash chip
 

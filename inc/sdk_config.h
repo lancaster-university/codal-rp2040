@@ -1,0 +1,3 @@
+#pragma once
+
+#define PICO_TIME_DEFAULT_ALARM_POOL_DISABLED 1

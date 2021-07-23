@@ -128,9 +128,11 @@ int RP2040Pin::getDigitalValue()
           (IO_STATUS_DIGITAL_IN | IO_STATUS_EVENT_ON_EDGE | IO_STATUS_EVENT_PULSE_ON_EDGE | IO_STATUS_INTERRUPT_ON_EDGE)))
     {
         disconnect();
+        gpio_init(name);
+        gpio_set_dir(name, GPIO_IN);
     }
 
-    return 0;
+    return gpio_get(name);
 }
 
 /**
