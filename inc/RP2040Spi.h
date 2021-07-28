@@ -5,6 +5,12 @@
 #include "codal-core/inc/driver-models/SPI.h"
 #include "RP2040Pin.h"
 
+// from micropython pico
+#define IS_VALID_PERIPH(spi, pin)   ((((pin) & 8) >> 3) == (spi))
+#define IS_VALID_SCK(spi, pin)      (((pin) & 3) == 2 && IS_VALID_PERIPH(spi, pin))
+#define IS_VALID_MOSI(spi, pin)     (((pin) & 3) == 3 && IS_VALID_PERIPH(spi, pin))
+#define IS_VALID_MISO(spi, pin)     (((pin) & 3) == 0 && IS_VALID_PERIPH(spi, pin))
+
 namespace codal
 {
 
@@ -16,7 +22,7 @@ protected:
   uint32_t baudrate;
 
   // for dma
-  uint8_t rxCh, txCh;
+  int rxCh, txCh;
   uint16_t transferCompleteEventCode;
 
 

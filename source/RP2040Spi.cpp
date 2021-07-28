@@ -1,3 +1,5 @@
+#include "stdio.h"
+
 #include "CodalConfig.h"
 #include "CodalDmesg.h"
 
@@ -8,6 +10,7 @@
 #include "RP2040Spi.h"
 #include "hardware/gpio.h"
 #include "hardware/spi.h"
+#include "hardware/dma.h"
 
 namespace codal
 {
@@ -19,6 +22,10 @@ RP2040SPI::RP2040SPI(Pin &mosi, Pin &miso, Pin &sclk) : codal::SPI()
   this->mosi = (RP2040Pin *)&mosi;
   this->miso = (RP2040Pin *)&miso;
   this->sclk = (RP2040Pin *)&sclk;
+  this->baudrate = 1000000;
+  rxCh = txCh = -1;
+
+  this->transferCompleteEventCode = codal::allocateNotifyEvent();
 
   // TODO: set instance by check pin config
   spi_inst = spi0;
@@ -60,8 +67,19 @@ int RP2040SPI::startTransfer(const uint8_t *txBuffer, uint32_t txSize, uint8_t *
                         uint32_t rxSize, PVoidCallback doneHandler, void *arg)
 {
   int res;
-  res = spi_write_read_blocking(spi_inst, txBuffer, rxBuffer, txSize);
-  return res;
+  // TODO: add dma transceiver
+  // txCh = dma_claim_unused_channel(false);
+  // rxCh = dma_claim_unused_channel(false);
+
+  if (rxBuffer && txBuffer){
+    res = spi_write_read_blocking(spi_inst, txBuffer, rxBuffer, txSize);
+  } else if (txBuffer){
+    res = spi_write_blocking(spi_inst, txBuffer, txSize);
+  } else {
+    res = spi_read_blocking(spi_inst, 0, rxBuffer, rxSize);
+  }
+  Event(DEVICE_ID_NOTIFY_ONE, transferCompleteEventCode);
+  return DEVICE_OK;
 }
 
 }

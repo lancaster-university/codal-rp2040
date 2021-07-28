@@ -40,6 +40,8 @@ set(TARGET_DEPS
     hardware_irq
     hardware_gpio
     hardware_spi
+    hardware_i2c
+    hardware_dma
     hardware_regs
     hardware_structs)
 
