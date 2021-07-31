@@ -21,12 +21,16 @@ protected:
   uint8_t spi_id;
   uint32_t baudrate;
 
+  PVoidCallback doneHandler;
+  void *doneHandlerArg;
+
+
   // for dma
-  int rxCh, txCh;
   uint16_t transferCompleteEventCode;
-
-
+  int startTransferDma(const uint8_t *txBuffer, uint32_t txSize, uint8_t *rxBuffer,
+                            uint32_t rxSize, PVoidCallback doneHandler, void *arg);
 public:
+  void _complete(void);
 
   /**
    * Initialize SPI instance with given pins.
@@ -78,7 +82,6 @@ public:
 
   virtual int startTransfer(const uint8_t *txBuffer, uint32_t txSize, uint8_t *rxBuffer,
                             uint32_t rxSize, PVoidCallback doneHandler, void *arg);
-
 
 };
 

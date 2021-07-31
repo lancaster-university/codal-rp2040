@@ -44,6 +44,7 @@ set(TARGET_DEPS
     hardware_pwm
     hardware_flash
     hardware_dma
+    hardware_irq
     hardware_regs
     hardware_structs)
 
