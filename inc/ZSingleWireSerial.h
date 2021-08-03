@@ -13,7 +13,7 @@ namespace codal
 class ZSingleWireSerial : public DMASingleWireSerial 
 {
 protected:
-  uint32_t baudrate;
+  uint32_t baudrate = 1000000;
   uint8_t txprog, rxprog;
   uint8_t smtx = 0;
   uint8_t smrx = 1;

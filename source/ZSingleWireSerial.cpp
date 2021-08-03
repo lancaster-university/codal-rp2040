@@ -26,7 +26,9 @@ static void jd_tx_program_init(PIO pio, uint sm, uint offset, uint pin, uint bau
   sm_config_set_out_pins(&c, pin, 1);
   sm_config_set_sideset_pins(&c, pin);
   sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_TX);
-  float div = (float)125000000 / (8 * baud);
+  // TODO: fix uint to float
+  // float div = (float)125000000 / (8 * baud);
+  float div = 15.625;
   sm_config_set_clkdiv(&c, div);
   pio_sm_init(pio, sm, offset, &c);
   pio_sm_set_enabled(pio, sm, false); // enable when need
@@ -40,7 +42,8 @@ static void jd_rx_program_init(PIO pio, uint sm, uint offset, uint pin, uint bau
   sm_config_set_in_pins(&c, pin);
   sm_config_set_in_shift(&c, true, true, 8);
   sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_RX);
-  float div = (float)125000000 / (8 * baud);
+  // float div = (float)125000000 / (8 * baud);
+  float div = 15.625;
   sm_config_set_clkdiv(&c, div);
   pio_sm_init(pio, sm, offset, &c);
   pio_sm_set_enabled(pio, sm, false); // enable when need
@@ -51,8 +54,8 @@ ZSingleWireSerial::ZSingleWireSerial(Pin& p) : DMASingleWireSerial(p)
   txprog = pio_add_program(pio0, &jd_tx_program);
   rxprog = pio_add_program(pio0, &jd_rx_program);
 
-  jd_rx_program_init(pio0, smrx, rxprog, p.name, 1000000);
-  jd_tx_program_init(pio0, smtx, txprog, p.name, 1000000);
+  jd_tx_program_init(pio0, smtx, txprog, p.name, baudrate);
+  jd_rx_program_init(pio0, smrx, rxprog, p.name, baudrate);
 
 }
 
