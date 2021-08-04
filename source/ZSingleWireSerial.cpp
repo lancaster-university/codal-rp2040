@@ -13,14 +13,39 @@
 
 using namespace codal;
 
+static ZSingleWireSerial * _this;
+
 #define STATUS_IDLE 0
 #define STATUS_TX   0x10
 #define STATUS_RX   0x20
 
-static void jd_tx_program_init(PIO pio, uint sm, uint offset, uint pin, uint baud) {
+
+int dmachTx = -1;
+int dmachRx = -1;
+
+extern "C" void dma_handler (){
+  uint n = dma_hw->ints0;
+  // write to clear
+  dma_hw->ints0 = n;
+  if (n & (1 << dmachTx)){
+    dma_channel_set_irq0_enabled(dmachTx, false);
+    if (_this->cb)
+      _this->cb(SWS_EVT_DATA_SENT);
+  } else if (n & (1 << dmachRx)){
+    dma_channel_set_irq0_enabled(dmachRx, false);
+    if (_this->cb)
+      _this->cb(SWS_EVT_DATA_RECEIVED);
+  }
+}
+
+static void jd_tx_arm_pin(PIO pio, uint sm, uint pin){
   pio_sm_set_pins_with_mask(pio, sm, 1u << pin, 1u << pin);
   pio_sm_set_pindirs_with_mask(pio, sm, 1u << pin, 1u << pin);
   pio_gpio_init(pio, pin);
+}
+
+static void jd_tx_program_init(PIO pio, uint sm, uint offset, uint pin, uint baud) {
+  jd_tx_arm_pin(pio, sm, pin);
   pio_sm_config c = jd_tx_program_get_default_config(offset);
   sm_config_set_out_shift(&c, true, false, 32);
   sm_config_set_out_pins(&c, pin, 1);
@@ -34,10 +59,14 @@ static void jd_tx_program_init(PIO pio, uint sm, uint offset, uint pin, uint bau
   pio_sm_set_enabled(pio, sm, false); // enable when need
 }
 
-static void jd_rx_program_init(PIO pio, uint sm, uint offset, uint pin, uint baud) {
+static void jd_rx_arm_pin(PIO pio, uint sm, uint pin){
   pio_sm_set_consecutive_pindirs(pio, sm, pin, 1, false);
   pio_gpio_init(pio, pin);
   gpio_pull_up(pin);
+}
+
+static void jd_rx_program_init(PIO pio, uint sm, uint offset, uint pin, uint baud) {
+  jd_rx_arm_pin(pio, sm, pin);
   pio_sm_config c = jd_rx_program_get_default_config(offset);
   sm_config_set_in_pins(&c, pin);
   sm_config_set_in_shift(&c, true, true, 8);
@@ -57,6 +86,12 @@ ZSingleWireSerial::ZSingleWireSerial(Pin& p) : DMASingleWireSerial(p)
   jd_tx_program_init(pio0, smtx, txprog, p.name, baudrate);
   jd_rx_program_init(pio0, smrx, rxprog, p.name, baudrate);
 
+  // fixed dma channels
+  dmachRx = dma_claim_unused_channel(true);
+  dmachTx = dma_claim_unused_channel(true);
+  // TODO: maybe a shared RP2040 DMA class for everyone..
+  irq_set_exclusive_handler(DMA_IRQ_0, dma_handler);
+  irq_set_enabled(DMA_IRQ_0, true);
 }
 
 int ZSingleWireSerial::setMode(SingleWireMode sw)
@@ -130,13 +165,7 @@ int ZSingleWireSerial::sendDMA(uint8_t* data, int len)
 {
   if (status != STATUS_TX)
     setMode(SingleWireTx);
-  if (dmachTx != -1){
-    dma_channel_unclaim(dmachTx);
-  }
-  
-  gpio_set_function(p.name, GPIO_FUNC_PIO0);
-  
-  dmachTx = dma_claim_unused_channel(false);
+    
   dma_channel_config c = dma_channel_get_default_config(dmachTx);
   channel_config_set_transfer_data_size(&c, DMA_SIZE_8);
   channel_config_set_dreq(&c, pio_get_dreq(pio0, smtx, true));
@@ -147,6 +176,10 @@ int ZSingleWireSerial::sendDMA(uint8_t* data, int len)
                         len,
                         false);
 
+  jd_tx_arm_pin(pio0, smtx, p.name);
+  _this = this;
+
+  dma_channel_set_irq0_enabled(dmachTx, true);
   dma_channel_start(dmachTx);
   return DEVICE_OK;
 }
@@ -155,13 +188,7 @@ int ZSingleWireSerial::receiveDMA(uint8_t* data, int len)
 {
   if (status != STATUS_RX)
     setMode(SingleWireRx);
-  if (dmachRx != -1){
-    dma_channel_unclaim(dmachRx);
-  }
 
-  gpio_set_function(p.name, GPIO_FUNC_PIO0);
-
-  dmachRx = dma_claim_unused_channel(false);
   dma_channel_config c = dma_channel_get_default_config(dmachRx);
   channel_config_set_bswap(&c, 1);
   channel_config_set_read_increment(&c, false);
@@ -177,6 +204,11 @@ int ZSingleWireSerial::receiveDMA(uint8_t* data, int len)
           len,
           false
   );
+
+  jd_rx_arm_pin(pio0, smrx, p.name);
+  _this = this;
+
+  dma_channel_set_irq0_enabled(dmachRx, true);
   dma_channel_start(dmachRx);
 
   return DEVICE_OK;
@@ -191,14 +223,6 @@ int ZSingleWireSerial::abortDMA()
   setMode(SingleWireDisconnected);
   gpio_set_function(p.name, GPIO_FUNC_SIO); // release gpio
 
-  if (dmachRx != -1){
-    dma_channel_unclaim(dmachRx);
-    dmachRx = -1;
-  }
-  if (dmachTx != -1){
-    dma_channel_unclaim(dmachTx);
-    dmachTx = -1;
-  }
   return DEVICE_OK;
 }
 

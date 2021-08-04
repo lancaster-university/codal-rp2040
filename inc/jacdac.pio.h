@@ -68,7 +68,5 @@ static inline pio_sm_config jd_rx_program_get_default_config(uint offset) {
     sm_config_set_wrap(&c, offset + jd_rx_wrap_target, offset + jd_rx_wrap);
     return c;
 }
-
-
 #endif
 

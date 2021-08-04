@@ -17,8 +17,6 @@ protected:
   uint8_t txprog, rxprog;
   uint8_t smtx = 0;
   uint8_t smrx = 1;
-  int dmachTx = -1;
-  int dmachRx = -1;
 
   virtual void configureRxInterrupt(int enable);
   virtual int configureTx(int);
