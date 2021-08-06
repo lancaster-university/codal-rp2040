@@ -5,6 +5,8 @@
 #include "CodalCompat.h"
 #include "Timer.h"
 
+#define NO_IRQ_COUNTER
+
 static int8_t irq_disabled;
 
 int8_t target_get_irq_disabled()
@@ -15,10 +17,14 @@ int8_t target_get_irq_disabled()
 void target_enable_irq()
 {
     irq_disabled--;
+#ifdef NO_IRQ_COUNTER
+    __enable_irq();
+#else
     if (irq_disabled <= 0) {
         irq_disabled = 0;
         __enable_irq();
     }
+#endif
 }
 
 void target_disable_irq()
