@@ -10,10 +10,9 @@
 #include "hardware/dma.h"
 #include "hardware/irq.h"
 #include "jacdac.pio.h" 
+#include "dma.h"
 
 using namespace codal;
-
-static ZSingleWireSerial * _this;
 
 #define STATUS_IDLE 0
 #define STATUS_TX   0x10
@@ -23,19 +22,14 @@ static ZSingleWireSerial * _this;
 int dmachTx = -1;
 int dmachRx = -1;
 
-extern "C" void dma_handler (){
-  uint n = dma_hw->ints0;
-  // write to clear
-  dma_hw->ints0 = n;
-  if (n & (1 << dmachTx)){
-    dma_channel_set_irq0_enabled(dmachTx, false);
-    if (_this->cb)
-      _this->cb(SWS_EVT_DATA_SENT);
-  } else if (n & (1 << dmachRx)){
-    dma_channel_set_irq0_enabled(dmachRx, false);
-    if (_this->cb)
-      _this->cb(SWS_EVT_DATA_RECEIVED);
-  }
+extern "C" void rx_handler (void * p){
+  ZSingleWireSerial * _this = (ZSingleWireSerial*)p;
+  _this->cb(SWS_EVT_DATA_RECEIVED);
+}
+
+extern "C" void tx_handler (void * p){
+  ZSingleWireSerial * _this = (ZSingleWireSerial*)p;
+  _this->cb(SWS_EVT_DATA_SENT);
 }
 
 static void jd_tx_arm_pin(PIO pio, uint sm, uint pin){
@@ -51,9 +45,7 @@ static void jd_tx_program_init(PIO pio, uint sm, uint offset, uint pin, uint bau
   sm_config_set_out_pins(&c, pin, 1);
   sm_config_set_sideset_pins(&c, pin);
   sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_TX);
-  // TODO: fix uint to float
-  // float div = (float)125000000 / (8 * baud);
-  float div = 15.625;
+  float div = (float)125000000 / (8 * baud);
   sm_config_set_clkdiv(&c, div);
   pio_sm_init(pio, sm, offset, &c);
   pio_sm_set_enabled(pio, sm, false); // enable when need
@@ -71,8 +63,7 @@ static void jd_rx_program_init(PIO pio, uint sm, uint offset, uint pin, uint bau
   sm_config_set_in_pins(&c, pin);
   sm_config_set_in_shift(&c, true, true, 8);
   sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_RX);
-  // float div = (float)125000000 / (8 * baud);
-  float div = 15.625;
+  float div = (float)125000000 / (8 * baud);
   sm_config_set_clkdiv(&c, div);
   pio_sm_init(pio, sm, offset, &c);
   pio_sm_set_enabled(pio, sm, false); // enable when need
@@ -89,9 +80,7 @@ ZSingleWireSerial::ZSingleWireSerial(Pin& p) : DMASingleWireSerial(p)
   // fixed dma channels
   dmachRx = dma_claim_unused_channel(true);
   dmachTx = dma_claim_unused_channel(true);
-  // TODO: maybe a shared RP2040 DMA class for everyone..
-  irq_set_exclusive_handler(DMA_IRQ_0, dma_handler);
-  irq_set_enabled(DMA_IRQ_0, true);
+
 }
 
 int ZSingleWireSerial::setMode(SingleWireMode sw)
@@ -177,9 +166,8 @@ int ZSingleWireSerial::sendDMA(uint8_t* data, int len)
                         false);
 
   jd_tx_arm_pin(pio0, smtx, p.name);
-  _this = this;
 
-  dma_channel_set_irq0_enabled(dmachTx, true);
+  DMA_SetChannelCallback(dmachTx, tx_handler, this);
   dma_channel_start(dmachTx);
   return DEVICE_OK;
 }
@@ -206,9 +194,8 @@ int ZSingleWireSerial::receiveDMA(uint8_t* data, int len)
   );
 
   jd_rx_arm_pin(pio0, smrx, p.name);
-  _this = this;
 
-  dma_channel_set_irq0_enabled(dmachRx, true);
+  DMA_SetChannelCallback(dmachRx, rx_handler, this);
   dma_channel_start(dmachRx);
 
   return DEVICE_OK;

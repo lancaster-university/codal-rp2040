@@ -8,6 +8,7 @@
 #include "CodalFiber.h"
 
 #include "RP2040Spi.h"
+#include "dma.h"
 #include "hardware/gpio.h"
 #include "hardware/spi.h"
 #include "hardware/dma.h"
@@ -18,7 +19,6 @@ namespace codal
 
 static spi_inst_t *spi_inst;
 static int rxCh, txCh, channel_irq;
-static RP2040SPI * _this;
 
 RP2040SPI::RP2040SPI(Pin &mosi, Pin &miso, Pin &sclk) : codal::SPI()
 {
@@ -108,13 +108,11 @@ void RP2040SPI::_complete(void){
   Event(DEVICE_ID_NOTIFY_ONE, transferCompleteEventCode);
 }
 
-extern "C" void _irqDone(){
-  // clear interrupt request
-  dma_hw->ints0 = 1 << channel_irq;
+extern "C" void _irqDone(void * p){
+  RP2040SPI * _this = (RP2040SPI*)p;
   _this->_complete();
 
 }
-
 
 int RP2040SPI::startTransferDma(const uint8_t *txBuffer, uint32_t txSize, uint8_t *rxBuffer,
                         uint32_t rxSize, PVoidCallback doneHandler, void *arg)
@@ -156,12 +154,9 @@ int RP2040SPI::startTransferDma(const uint8_t *txBuffer, uint32_t txSize, uint8_
   }
   this->doneHandler = doneHandler;
   this->doneHandlerArg = arg;
-  dma_start_channel_mask(channel_mask);
-  _this = this;
 
-  irq_set_exclusive_handler(DMA_IRQ_0, _irqDone);
-  dma_channel_set_irq0_enabled(channel_irq, true);
-  irq_set_enabled(DMA_IRQ_0, true);
+  DMA_SetChannelCallback(channel_irq, _irqDone, this);
+  dma_start_channel_mask(channel_mask);
 
   return DEVICE_OK;
 }

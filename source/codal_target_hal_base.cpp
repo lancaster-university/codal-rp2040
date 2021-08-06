@@ -5,6 +5,8 @@
 #include "CodalCompat.h"
 #include "Timer.h"
 
+#include "hardware/flash.h"
+
 #define NO_IRQ_COUNTER
 
 static int8_t irq_disabled;
@@ -42,7 +44,9 @@ void target_wait_for_event()
 
 uint64_t target_get_serial()
 {
-    return 0;
+    uint8_t buff[8];
+    flash_get_unique_id(buff);
+    return *(uint64_t*)buff;
 }
 
 void target_reset()
