@@ -34,10 +34,29 @@ DEALINGS IN THE SOFTWARE.
 #include "codal_target_hal.h"
 #include "codal-core/inc/types/Event.h"
 #include "CodalDmesg.h"
+
 #include "pico/stdlib.h"
+#include "hardware/gpio.h"
+#include "hardware/structs/iobank0.h"
+#include "hardware/irq.h"
 
 namespace codal
 {
+
+static RP2040Pin *eventPin[NUM_BANK0_GPIOS];
+
+extern "C" void isr_io_bank0(){
+    io_irq_ctrl_hw_t *irq_ctrl_base = &iobank0_hw->proc0_irq_ctrl; // assume io irq only on core0
+    for (uint gpio = 0; gpio < NUM_BANK0_GPIOS; gpio++) {
+        io_rw_32 *status_reg = &irq_ctrl_base->ints[gpio / 8];
+        uint events = (*status_reg >> 4 * (gpio % 8)) & 0xf;
+        if (events) {
+            gpio_acknowledge_irq(gpio, events);
+            if (eventPin[gpio])
+                eventPin[gpio]->eventCallback(events);
+        }
+    }
+}
 
 struct ZEventConfig
 {
@@ -73,6 +92,14 @@ RP2040Pin::RP2040Pin(int id, PinNumber name, PinCapability capability) : codal::
 void RP2040Pin::disconnect()
 {
     target_disable_irq();
+    if (this->status & (IO_STATUS_EVENT_ON_EDGE | IO_STATUS_EVENT_PULSE_ON_EDGE | IO_STATUS_INTERRUPT_ON_EDGE)){
+        gpio_set_irq_enabled(name, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, false);
+
+        if (this->evCfg)
+            delete this->evCfg;
+        this->evCfg = NULL;
+        eventPin[name] = 0;
+    }
     status = 0;
     target_enable_irq();
 }
@@ -482,6 +509,19 @@ int RP2040Pin::enableRiseFallEvents(int eventType)
     // if we are in neither of the two modes, configure pin as a TimedInterruptIn.
     if (!(status & (IO_STATUS_EVENT_ON_EDGE | IO_STATUS_EVENT_PULSE_ON_EDGE | IO_STATUS_INTERRUPT_ON_EDGE)))
     {
+        if (!(status & IO_STATUS_DIGITAL_IN))
+            getDigitalValue();
+        
+        eventPin[name] = this;
+        gpio_set_irq_enabled(name, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true);
+        irq_set_enabled(IO_IRQ_BANK0, true);
+
+        if (this->evCfg == NULL)
+            this->evCfg = new ZEventConfig;
+
+        auto cfg = this->evCfg;
+        cfg->prevPulse = 0;
+        
     }
 
     status &= ~(IO_STATUS_EVENT_ON_EDGE | IO_STATUS_EVENT_PULSE_ON_EDGE | IO_STATUS_INTERRUPT_ON_EDGE);
@@ -505,7 +545,11 @@ int RP2040Pin::enableRiseFallEvents(int eventType)
  */
 int RP2040Pin::disableEvents()
 {
-    target_disable_irq();
+    if (status & (IO_STATUS_EVENT_ON_EDGE | IO_STATUS_EVENT_PULSE_ON_EDGE | IO_STATUS_INTERRUPT_ON_EDGE | IO_STATUS_TOUCH_IN))
+    {
+        disconnect();
+        getDigitalValue();
+    }
     return DEVICE_OK;
 }
 
@@ -573,5 +617,23 @@ int RP2040Pin::getAndSetDigitalValue(int value)
     return 0;
 }
 
+/**
+ * @brief GPIO interrupt callback
+ * 
+ * @param event from pico-sdk gpio.h, 0x1=level low, 0x2=level high, 0x4=edge fall, 0x8=edge rise
+ */
+void RP2040Pin::eventCallback(int event)
+{
+    bool isRise = (event & GPIO_IRQ_EDGE_RISE);
+
+    if (status & IO_STATUS_EVENT_PULSE_ON_EDGE)
+        pulseWidthEvent(isRise ? DEVICE_PIN_EVT_PULSE_LO : DEVICE_PIN_EVT_PULSE_HI);
+
+    if (status & IO_STATUS_EVENT_ON_EDGE)
+        Event(id, isRise ? DEVICE_PIN_EVT_RISE : DEVICE_PIN_EVT_FALL);
+
+    if (status & IO_STATUS_INTERRUPT_ON_EDGE && gpio_irq)
+        gpio_irq(isRise);
+}
 
 } // namespace codal

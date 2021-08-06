@@ -84,7 +84,7 @@ protected:
 public:
     void disconnect();
 
-    void eventCallback();
+    void eventCallback(int event);
 
     /**
      * Constructor.
