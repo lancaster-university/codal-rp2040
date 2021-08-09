@@ -7,7 +7,7 @@
 
 #include "hardware/flash.h"
 
-#define NO_IRQ_COUNTER
+// #define NO_IRQ_COUNTER
 
 static int8_t irq_disabled;
 

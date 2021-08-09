@@ -614,6 +614,15 @@ int RP2040Pin::eventOn(int eventType)
 
 int RP2040Pin::getAndSetDigitalValue(int value)
 {
+    if (gpio_get_function(name) != GPIO_FUNC_SIO){
+        gpio_set_function(name, GPIO_FUNC_SIO);
+    }
+    if (gpio_get_dir(name) == GPIO_IN){
+        disconnect();
+        setDigitalValue(value);
+    } else {
+        gpio_put(name, value);
+    }
     return 0;
 }
 
