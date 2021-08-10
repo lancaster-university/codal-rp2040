@@ -43,9 +43,10 @@ DEALINGS IN THE SOFTWARE.
 namespace codal
 {
 
-static RP2040Pin *eventPin[NUM_BANK0_GPIOS];
 
-extern "C" void isr_io_bank0(){
+extern "C" {
+static RP2040Pin *eventPin[NUM_BANK0_GPIOS];
+void isr_io_bank0(){
     io_irq_ctrl_hw_t *irq_ctrl_base = &iobank0_hw->proc0_irq_ctrl; // assume io irq only on core0
     for (uint gpio = 0; gpio < NUM_BANK0_GPIOS; gpio++) {
         io_rw_32 *status_reg = &irq_ctrl_base->ints[gpio / 8];
@@ -56,6 +57,7 @@ extern "C" void isr_io_bank0(){
                 eventPin[gpio]->eventCallback(events);
         }
     }
+}
 }
 
 struct ZEventConfig
@@ -157,6 +159,7 @@ int RP2040Pin::getDigitalValue()
         disconnect();
         gpio_init(name);
         gpio_set_dir(name, GPIO_IN);
+        status |= IO_STATUS_DIGITAL_IN;
 
         if (pullMode == PullMode::Up)
             gpio_set_pulls(name,true, false);

@@ -21,15 +21,16 @@ using namespace codal;
 
 int dmachTx = -1;
 int dmachRx = -1;
-
-extern "C" void rx_handler (void * p){
+extern "C" {
+void rx_handler (void * p){
   ZSingleWireSerial * _this = (ZSingleWireSerial*)p;
   _this->cb(SWS_EVT_DATA_RECEIVED);
 }
 
-extern "C" void tx_handler (void * p){
+void tx_handler (void * p){
   ZSingleWireSerial * _this = (ZSingleWireSerial*)p;
   _this->cb(SWS_EVT_DATA_SENT);
+}
 }
 
 static void jd_tx_arm_pin(PIO pio, uint sm, uint pin){
@@ -69,6 +70,7 @@ static void jd_rx_program_init(PIO pio, uint sm, uint offset, uint pin, uint bau
   pio_sm_set_enabled(pio, sm, false); // enable when need
 }
 
+
 ZSingleWireSerial::ZSingleWireSerial(Pin& p) : DMASingleWireSerial(p)
 {
   txprog = pio_add_program(pio0, &jd_tx_program);
@@ -81,26 +83,56 @@ ZSingleWireSerial::ZSingleWireSerial(Pin& p) : DMASingleWireSerial(p)
   dmachRx = dma_claim_unused_channel(true);
   dmachTx = dma_claim_unused_channel(true);
 
+  // init dma
+  
+  dma_channel_config c = dma_channel_get_default_config(dmachRx);
+  channel_config_set_bswap(&c, 1);
+  channel_config_set_read_increment(&c, false);
+  channel_config_set_write_increment(&c, true);
+  channel_config_set_transfer_data_size(&c, DMA_SIZE_8);
+  channel_config_set_dreq(&c, DREQ_PIO0_RX0 + smrx);
+  uint8_t * rxPtr = (uint8_t*)&pio0->rxf[smrx] + 3;
+  dma_channel_configure(
+          dmachRx,
+          &c,
+          NULL,         // dest
+          rxPtr,        // src
+          0,
+          false
+  );
+
+  c = dma_channel_get_default_config(dmachTx);
+  channel_config_set_transfer_data_size(&c, DMA_SIZE_8);
+  channel_config_set_dreq(&c, pio_get_dreq(pio0, smtx, true));
+  dma_channel_configure(dmachTx,
+                        &c,
+                        &pio0->txf[smtx],
+                        NULL,
+                        0,
+                        false);
+
 }
 
 int ZSingleWireSerial::setMode(SingleWireMode sw)
 {
   // either enable rx or tx program
   if (sw == SingleWireRx){
-    pio_sm_set_enabled(pio0, smtx, false);
-    pio_sm_set_enabled(pio0, smrx, true);
-    // jd_tx_program_init(pio0, smrx, txprog, p.name, baudrate);
     status = STATUS_RX;
+    jd_rx_arm_pin(pio0, smrx, p.name);
+    jd_rx_program_init(pio0, smrx, rxprog, p.name, baudrate);
+    pio_sm_set_enabled(pio0, smrx, true);
   } else if (sw == SingleWireTx){
-    pio_sm_set_enabled(pio0, smrx, false);
-    pio_sm_set_enabled(pio0, smtx, true);
-    // jd_tx_program_init(pio0, smtx, txprog, p.name, baudrate);
     status = STATUS_TX;
+    jd_tx_arm_pin(pio0, smtx, p.name);
+    jd_rx_program_init(pio0, smtx, txprog, p.name, baudrate);
+    pio_sm_set_enabled(pio0, smtx, true);
   } else {
+    status = STATUS_IDLE;
+    gpio_set_function(p.name, GPIO_FUNC_SIO); // release gpio
     pio_sm_set_enabled(pio0, smtx, false);
     pio_sm_set_enabled(pio0, smrx, false);
-    status = STATUS_IDLE;
   }
+  
   return DEVICE_OK;
 }
 
@@ -154,21 +186,10 @@ int ZSingleWireSerial::sendDMA(uint8_t* data, int len)
 {
   if (status != STATUS_TX)
     setMode(SingleWireTx);
-    
-  dma_channel_config c = dma_channel_get_default_config(dmachTx);
-  channel_config_set_transfer_data_size(&c, DMA_SIZE_8);
-  channel_config_set_dreq(&c, pio_get_dreq(pio0, smtx, true));
-  dma_channel_configure(dmachTx,
-                        &c,
-                        &pio0->txf[smtx],
-                        data,
-                        len,
-                        false);
-
-  jd_tx_arm_pin(pio0, smtx, p.name);
 
   DMA_SetChannelCallback(dmachTx, tx_handler, this);
-  dma_channel_start(dmachTx);
+  dma_channel_transfer_from_buffer_now(dmachTx, data, len);
+
   return DEVICE_OK;
 }
 
@@ -177,26 +198,8 @@ int ZSingleWireSerial::receiveDMA(uint8_t* data, int len)
   if (status != STATUS_RX)
     setMode(SingleWireRx);
 
-  dma_channel_config c = dma_channel_get_default_config(dmachRx);
-  channel_config_set_bswap(&c, 1);
-  channel_config_set_read_increment(&c, false);
-  channel_config_set_write_increment(&c, true);
-  channel_config_set_transfer_data_size(&c, DMA_SIZE_8);
-  channel_config_set_dreq(&c, DREQ_PIO0_RX0 + smrx);
-  uint8_t * rxPtr = (uint8_t*)&pio0->rxf[smrx] + 3;
-  dma_channel_configure(
-          dmachRx,
-          &c,
-          data,         // dest
-          rxPtr,        // src
-          len,
-          false
-  );
-
-  jd_rx_arm_pin(pio0, smrx, p.name);
-
   DMA_SetChannelCallback(dmachRx, rx_handler, this);
-  dma_channel_start(dmachRx);
+  dma_channel_transfer_to_buffer_now(dmachRx, data, len);
 
   return DEVICE_OK;
 }
@@ -208,7 +211,6 @@ int ZSingleWireSerial::abortDMA()
     return DEVICE_INVALID_PARAMETER;
   
   setMode(SingleWireDisconnected);
-  gpio_set_function(p.name, GPIO_FUNC_SIO); // release gpio
 
   return DEVICE_OK;
 }
