@@ -44,23 +44,20 @@ static inline pio_sm_config jd_tx_program_get_default_config(uint offset) {
 // jd_rx //
 // ----- //
 
-#if 1
-
 #define jd_rx_wrap_target 0
 #define jd_rx_wrap 8
 
-// TODO: add break irq to end rx dma
 static const uint16_t jd_rx_program_instructions[] = {
             //     .wrap_target
     0x2020, //  0: wait   0 pin, 0                   
-    0xea27, //  1: set    x, 7                   [10]
+    0xf727, //  1: set    x, 7            side 0 [7] 
     0x4001, //  2: in     pins, 1                    
     0x0642, //  3: jmp    x--, 2                 [6] 
-    0x00c8, //  4: jmp    pin, 8                     
-    0xc014, //  5: irq    nowait 4 rel               
+    0x18c8, //  4: jmp    pin, 8          side 1     
+    0xd001, //  5: irq    nowait 1        side 0     
     0x20a0, //  6: wait   1 pin, 0                   
-    0x0000, //  7: jmp    0                          
-    0x8020, //  8: push   block                      
+    0x1800, //  7: jmp    0               side 1     
+    0x9820, //  8: push   block           side 1     
             //     .wrap
 };
 
@@ -74,37 +71,8 @@ static const struct pio_program jd_rx_program = {
 static inline pio_sm_config jd_rx_program_get_default_config(uint offset) {
     pio_sm_config c = pio_get_default_sm_config();
     sm_config_set_wrap(&c, offset + jd_rx_wrap_target, offset + jd_rx_wrap);
+    sm_config_set_sideset(&c, 2, true, false);
     return c;
 }
-#endif
-
-#else
-
-#define jd_rx_wrap_target 0
-#define jd_rx_wrap 3
-
-static const uint16_t jd_rx_program_instructions[] = {
-            //     .wrap_target
-    0x2020, //  0: wait   0 pin, 0                   
-    0xea27, //  1: set    x, 7                   [10]
-    0x4001, //  2: in     pins, 1                    
-    0x0642, //  3: jmp    x--, 2                 [6] 
-            //     .wrap
-};
-
-#if !PICO_NO_HARDWARE
-static const struct pio_program jd_rx_program = {
-    .instructions = jd_rx_program_instructions,
-    .length = 4,
-    .origin = -1,
-};
-
-static inline pio_sm_config jd_rx_program_get_default_config(uint offset) {
-    pio_sm_config c = pio_get_default_sm_config();
-    sm_config_set_wrap(&c, offset + jd_rx_wrap_target, offset + jd_rx_wrap);
-    return c;
-}
-#endif
-
 #endif
 

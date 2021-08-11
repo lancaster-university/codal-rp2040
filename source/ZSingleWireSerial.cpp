@@ -18,6 +18,8 @@ using namespace codal;
 #define STATUS_TX   0x10
 #define STATUS_RX   0x20
 
+#define PIO_BREAK_IRQ 0x2
+// #define DEBUG_PIN
 
 int dmachTx = -1;
 int dmachRx = -1;
@@ -30,6 +32,15 @@ void rx_handler (void * p){
 void tx_handler (void * p){
   ZSingleWireSerial * _this = (ZSingleWireSerial*)p;
   _this->cb(SWS_EVT_DATA_SENT);
+}
+
+static ZSingleWireSerial * inst;
+void isr_pio0_0 (){
+  uint32_t n = pio0->irq;
+  pio0->irq = n;
+  if (n & PIO_BREAK_IRQ){
+    inst->cb(SWS_EVT_DATA_RECEIVED);
+  }
 }
 }
 
@@ -53,7 +64,16 @@ static void jd_tx_program_init(PIO pio, uint sm, uint offset, uint pin, uint bau
 }
 
 static void jd_rx_arm_pin(PIO pio, uint sm, uint pin){
+#ifdef DEBUG_PIN
+  // for debug pin 29
+  pio_sm_set_pins_with_mask(pio, sm, 1u << 29, 1u << 29); // init high
+  pio_sm_set_pindirs_with_mask(pio, sm, (0u << pin) | (1u << 29), (1u << pin) | (1u << 29));
+  pio_gpio_init(pio, 29);
+  gpio_set_outover(29, GPIO_OVERRIDE_NORMAL);
+#else
   pio_sm_set_consecutive_pindirs(pio, sm, pin, 1, false);
+#endif
+  
   pio_gpio_init(pio, pin);
   gpio_pull_up(pin);
 }
@@ -62,8 +82,12 @@ static void jd_rx_program_init(PIO pio, uint sm, uint offset, uint pin, uint bau
   jd_rx_arm_pin(pio, sm, pin);
   pio_sm_config c = jd_rx_program_get_default_config(offset);
   sm_config_set_in_pins(&c, pin);
+  sm_config_set_jmp_pin(&c, pin);
   sm_config_set_in_shift(&c, true, true, 8);
   sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_RX);
+#ifdef DEBUG_PIN
+  sm_config_set_sideset_pins(&c, 29);
+#endif
   float div = (float)125000000 / (8 * baud);
   sm_config_set_clkdiv(&c, div);
   pio_sm_init(pio, sm, offset, &c);
@@ -73,6 +97,7 @@ static void jd_rx_program_init(PIO pio, uint sm, uint offset, uint pin, uint bau
 
 ZSingleWireSerial::ZSingleWireSerial(Pin& p) : DMASingleWireSerial(p)
 {
+  inst = this;
   txprog = pio_add_program(pio0, &jd_tx_program);
   rxprog = pio_add_program(pio0, &jd_rx_program);
 
@@ -110,7 +135,8 @@ ZSingleWireSerial::ZSingleWireSerial(Pin& p) : DMASingleWireSerial(p)
                         NULL,
                         0,
                         false);
-
+  // pio irq for dma rx break handling
+  irq_set_enabled(PIO0_IRQ_0, true);
 }
 
 int ZSingleWireSerial::setMode(SingleWireMode sw)
@@ -124,7 +150,7 @@ int ZSingleWireSerial::setMode(SingleWireMode sw)
   } else if (sw == SingleWireTx){
     status = STATUS_TX;
     jd_tx_arm_pin(pio0, smtx, p.name);
-    jd_rx_program_init(pio0, smtx, txprog, p.name, baudrate);
+    jd_tx_program_init(pio0, smtx, txprog, p.name, baudrate);
     pio_sm_set_enabled(pio0, smtx, true);
   } else {
     status = STATUS_IDLE;
@@ -198,8 +224,10 @@ int ZSingleWireSerial::receiveDMA(uint8_t* data, int len)
   if (status != STATUS_RX)
     setMode(SingleWireRx);
 
+  pio0->irq = PIO_BREAK_IRQ; // clear irq
   DMA_SetChannelCallback(dmachRx, rx_handler, this);
   dma_channel_transfer_to_buffer_now(dmachRx, data, len);
+  pio_set_irq0_source_enabled(pio0, pis_interrupt1, true);
 
   return DEVICE_OK;
 }
@@ -211,6 +239,7 @@ int ZSingleWireSerial::abortDMA()
     return DEVICE_INVALID_PARAMETER;
   
   setMode(SingleWireDisconnected);
+  pio_set_irq0_source_enabled(pio0, pis_interrupt1, false);
 
   return DEVICE_OK;
 }
