@@ -20,8 +20,11 @@ private:
   uint8_t slice;
   int sampleRate;
   RP2040Pin *pin;
+  uint16_t playPos = 0;
+  uint16_t * buf0;
 
 public:
+  bool playing;
   // The stream component that is serving our data
   DataSource &upstream;
   ManagedBuffer output;
@@ -62,6 +65,10 @@ public:
    * Disable this component
    */
   void disable();
+
+  
+  void fillBuffer();
+  void irq(uint16_t slice_mask);
 
 };
 
