@@ -35,7 +35,6 @@ DEALINGS IN THE SOFTWARE.
 #include "codal-core/inc/types/Event.h"
 #include "CodalDmesg.h"
 
-#include "pico/stdlib.h"
 #include "hardware/gpio.h"
 #include "hardware/structs/iobank0.h"
 #include "hardware/irq.h"
