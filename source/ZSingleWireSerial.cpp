@@ -27,14 +27,16 @@ extern "C"
 {
     void rx_handler(void *p)
     {
-        ZSingleWireSerial *_this = (ZSingleWireSerial *)p;
-        _this->cb(SWS_EVT_DATA_RECEIVED);
+        ZSingleWireSerial* inst = (ZSingleWireSerial *)p;
+        if (inst && inst->cb)
+            inst->cb(SWS_EVT_DATA_RECEIVED);
     }
 
     void tx_handler(void *p)
     {
-        ZSingleWireSerial *_this = (ZSingleWireSerial *)p;
-        _this->cb(SWS_EVT_DATA_SENT);
+        ZSingleWireSerial* inst = (ZSingleWireSerial *)p;
+        if (inst && inst->cb)
+            inst->cb(SWS_EVT_DATA_SENT);
     }
 
     static ZSingleWireSerial *inst;
