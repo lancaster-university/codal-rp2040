@@ -99,7 +99,15 @@ function(pico_add_dis_output TARGET)
 endfunction()
 
 function(pico_wrap_function TARGET FUNCNAME)
-    target_link_options(${TARGET} INTERFACE "LINKER:--wrap=${FUNCNAME}")
+    if ("${FUNCNAME}" STREQUAL "malloc")
+    MESSAGE("${BoldYellow}Warning: Not using pico malloc${ColourReset}")
+    elseif("${FUNCNAME}" STREQUAL "calloc")
+        MESSAGE("${BoldYellow}Warning: Not using pico calloc${ColourReset}")
+    elseif("${FUNCNAME}" STREQUAL "free")
+        MESSAGE("${BoldYellow}Warning: Not using pico free${ColourReset}")
+    else()
+        target_link_options(${TARGET} INTERFACE "LINKER:--wrap=${FUNCNAME}")
+    endif()
 endfunction()
 
 # add map file generation for the given target
