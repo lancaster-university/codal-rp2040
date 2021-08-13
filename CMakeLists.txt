@@ -39,6 +39,13 @@ set(TARGET_DEPS
     hardware_sync
     hardware_irq
     hardware_gpio
+    hardware_spi
+    hardware_i2c
+    hardware_pwm
+    hardware_flash
+    hardware_pio
+    hardware_dma
+    hardware_irq
     hardware_regs
     hardware_structs)
 
