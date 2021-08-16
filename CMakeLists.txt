@@ -33,21 +33,23 @@ add_subdirectory(${HAL_RP2_COMMON_ROOT})
 add_subdirectory(${HAL_RP2040_ROOT})
 
 set(TARGET_DEPS 
-    pico_stdlib
-    pico_sync
     cmsis_core
     hardware_sync
     hardware_irq
     hardware_gpio
     hardware_spi
     hardware_i2c
+    hardware_uart
     hardware_pwm
     hardware_flash
     hardware_pio
     hardware_dma
     hardware_irq
     hardware_regs
-    hardware_structs)
+    hardware_structs
+    hardware_exception
+    hardware_divider
+    pico_runtime)
 
 include_directories(${HAL_INCLUDES})
 

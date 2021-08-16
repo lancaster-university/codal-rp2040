@@ -4,7 +4,6 @@
 #include "Event.h"
 
 #include "stdio.h"
-#include "pico/stdlib.h"
 #include "hardware/clocks.h"
 #include "hardware/pio.h"
 #include "hardware/dma.h"
