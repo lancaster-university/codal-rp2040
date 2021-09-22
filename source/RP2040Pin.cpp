@@ -42,22 +42,26 @@ DEALINGS IN THE SOFTWARE.
 namespace codal
 {
 
-
-extern "C" {
-static RP2040Pin *eventPin[NUM_BANK0_GPIOS];
-REAL_TIME_FUNC
-void isr_io_bank0(){
-    io_irq_ctrl_hw_t *irq_ctrl_base = &iobank0_hw->proc0_irq_ctrl; // assume io irq only on core0
-    for (uint gpio = 0; gpio < NUM_BANK0_GPIOS; gpio++) {
-        io_rw_32 *status_reg = &irq_ctrl_base->ints[gpio / 8];
-        uint events = (*status_reg >> 4 * (gpio % 8)) & 0xf;
-        if (events) {
-            gpio_acknowledge_irq(gpio, events);
-            if (eventPin[gpio])
-                eventPin[gpio]->eventCallback(events);
+extern "C"
+{
+    static RP2040Pin *eventPin[NUM_BANK0_GPIOS];
+    REAL_TIME_FUNC
+    void isr_io_bank0()
+    {
+        io_irq_ctrl_hw_t *irq_ctrl_base =
+            &iobank0_hw->proc0_irq_ctrl; // assume io irq only on core0
+        for (uint gpio = 0; gpio < NUM_BANK0_GPIOS; gpio++)
+        {
+            io_rw_32 *status_reg = &irq_ctrl_base->ints[gpio / 8];
+            uint events = (*status_reg >> 4 * (gpio % 8)) & 0xf;
+            if (events)
+            {
+                gpio_acknowledge_irq(gpio, events);
+                if (eventPin[gpio])
+                    eventPin[gpio]->eventCallback(events);
+            }
         }
     }
-}
 }
 
 struct ZEventConfig
@@ -81,7 +85,8 @@ struct ZEventConfig
  * RP2040Pin P0(DEVICE_ID_IO_P0, DEVICE_PIN_P0, PIN_CAPABILITY_ALL);
  * @endcode
  */
-RP2040Pin::RP2040Pin(int id, PinNumber name, PinCapability capability) : codal::Pin(id, name, capability)
+RP2040Pin::RP2040Pin(int id, PinNumber name, PinCapability capability)
+    : codal::Pin(id, name, capability)
 {
     this->pullMode = DEVICE_DEFAULT_PULLMODE;
 
@@ -95,7 +100,9 @@ REAL_TIME_FUNC
 void RP2040Pin::disconnect()
 {
     target_disable_irq();
-    if (this->status & (IO_STATUS_EVENT_ON_EDGE | IO_STATUS_EVENT_PULSE_ON_EDGE | IO_STATUS_INTERRUPT_ON_EDGE)){
+    if (this->status &
+        (IO_STATUS_EVENT_ON_EDGE | IO_STATUS_EVENT_PULSE_ON_EDGE | IO_STATUS_INTERRUPT_ON_EDGE))
+    {
         gpio_set_irq_enabled(name, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, false);
 
         if (this->evCfg)
@@ -156,8 +163,8 @@ REAL_TIME_FUNC
 int RP2040Pin::getDigitalValue()
 {
     // Move into a Digital input state if necessary.
-    if (!(status &
-          (IO_STATUS_DIGITAL_IN | IO_STATUS_EVENT_ON_EDGE | IO_STATUS_EVENT_PULSE_ON_EDGE | IO_STATUS_INTERRUPT_ON_EDGE)))
+    if (!(status & (IO_STATUS_DIGITAL_IN | IO_STATUS_EVENT_ON_EDGE | IO_STATUS_EVENT_PULSE_ON_EDGE |
+                    IO_STATUS_INTERRUPT_ON_EDGE)))
     {
         disconnect();
         gpio_init(name);
@@ -165,7 +172,7 @@ int RP2040Pin::getDigitalValue()
         status |= IO_STATUS_DIGITAL_IN;
 
         if (pullMode == PullMode::Up)
-            gpio_set_pulls(name,true, false);
+            gpio_set_pulls(name, true, false);
         else if (pullMode == PullMode::Down)
             gpio_set_pulls(name, false, true);
         else
@@ -278,8 +285,8 @@ int RP2040Pin::setServoValue(int value, int range, int center)
 }
 
 /**
- * Configures this IO pin as an analogue input (if necessary), and samples the RP2040Pin for its analog
- * value.
+ * Configures this IO pin as an analogue input (if necessary), and samples the RP2040Pin for its
+ * analog value.
  *
  * @return the current analogue level on the pin, in the range 0 - 1024, or
  *         DEVICE_NOT_SUPPORTED if the given pin does not have analog capability.
@@ -515,11 +522,12 @@ void RP2040Pin::pulseWidthEvent(int eventValue)
 int RP2040Pin::enableRiseFallEvents(int eventType)
 {
     // if we are in neither of the two modes, configure pin as a TimedInterruptIn.
-    if (!(status & (IO_STATUS_EVENT_ON_EDGE | IO_STATUS_EVENT_PULSE_ON_EDGE | IO_STATUS_INTERRUPT_ON_EDGE)))
+    if (!(status &
+          (IO_STATUS_EVENT_ON_EDGE | IO_STATUS_EVENT_PULSE_ON_EDGE | IO_STATUS_INTERRUPT_ON_EDGE)))
     {
         if (!(status & IO_STATUS_DIGITAL_IN))
             getDigitalValue();
-        
+
         eventPin[name] = this;
         gpio_set_irq_enabled(name, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true);
         irq_set_enabled(IO_IRQ_BANK0, true);
@@ -529,10 +537,10 @@ int RP2040Pin::enableRiseFallEvents(int eventType)
 
         auto cfg = this->evCfg;
         cfg->prevPulse = 0;
-        
     }
 
-    status &= ~(IO_STATUS_EVENT_ON_EDGE | IO_STATUS_EVENT_PULSE_ON_EDGE | IO_STATUS_INTERRUPT_ON_EDGE);
+    status &=
+        ~(IO_STATUS_EVENT_ON_EDGE | IO_STATUS_EVENT_PULSE_ON_EDGE | IO_STATUS_INTERRUPT_ON_EDGE);
 
     // set our status bits accordingly.
     if (eventType == DEVICE_PIN_EVENT_ON_EDGE)
@@ -554,7 +562,8 @@ int RP2040Pin::enableRiseFallEvents(int eventType)
 REAL_TIME_FUNC
 int RP2040Pin::disableEvents()
 {
-    if (status & (IO_STATUS_EVENT_ON_EDGE | IO_STATUS_EVENT_PULSE_ON_EDGE | IO_STATUS_INTERRUPT_ON_EDGE | IO_STATUS_TOUCH_IN))
+    if (status & (IO_STATUS_EVENT_ON_EDGE | IO_STATUS_EVENT_PULSE_ON_EDGE |
+                  IO_STATUS_INTERRUPT_ON_EDGE | IO_STATUS_TOUCH_IN))
     {
         disconnect();
         getDigitalValue();
@@ -625,13 +634,17 @@ int RP2040Pin::eventOn(int eventType)
 REAL_TIME_FUNC
 int RP2040Pin::getAndSetDigitalValue(int value)
 {
-    if (gpio_get_function(name) != GPIO_FUNC_SIO){
+    if (gpio_get_function(name) != GPIO_FUNC_SIO)
+    {
         gpio_set_function(name, GPIO_FUNC_SIO);
     }
-    if (gpio_get_dir(name) == GPIO_IN){
+    if (gpio_get_dir(name) == GPIO_IN)
+    {
         disconnect();
         setDigitalValue(value);
-    } else {
+    }
+    else
+    {
         gpio_put(name, value);
     }
     return 0;
@@ -639,7 +652,7 @@ int RP2040Pin::getAndSetDigitalValue(int value)
 
 /**
  * @brief GPIO interrupt callback
- * 
+ *
  * @param event from pico-sdk gpio.h, 0x1=level low, 0x2=level high, 0x4=edge fall, 0x8=edge rise
  */
 void RP2040Pin::eventCallback(int event)

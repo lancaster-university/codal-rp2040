@@ -23,7 +23,8 @@ void target_enable_irq()
 #ifdef NO_IRQ_COUNTER
     __enable_irq();
 #else
-    if (irq_disabled <= 0) {
+    if (irq_disabled <= 0)
+    {
         irq_disabled = 0;
         __enable_irq();
     }
@@ -48,7 +49,7 @@ uint64_t target_get_serial()
 {
     uint8_t buff[8];
     flash_get_unique_id(buff);
-    return *(uint64_t*)buff;
+    return *(uint64_t *)buff;
 }
 
 void target_reset()
@@ -81,16 +82,16 @@ void target_reset()
 
 extern "C" void target_start()
 {
-//     NRF_NVMC->ICACHECNF = NVMC_ICACHECNF_CACHEEN_Enabled;
-//     // bring ports back to reset state, in case bootloader messed it up
-//     for (int i = 0; i < 32; ++i) {
-//         NRF_P0->PIN_CNF[i] = 2;
-// #ifdef NRF_P1
-//         NRF_P1->PIN_CNF[i] = 2;
-// #endif
-//     }
-//     user_init();
-//     _start();
+    //     NRF_NVMC->ICACHECNF = NVMC_ICACHECNF_CACHEEN_Enabled;
+    //     // bring ports back to reset state, in case bootloader messed it up
+    //     for (int i = 0; i < 32; ++i) {
+    //         NRF_P0->PIN_CNF[i] = 2;
+    // #ifdef NRF_P1
+    //         NRF_P1->PIN_CNF[i] = 2;
+    // #endif
+    //     }
+    //     user_init();
+    //     _start();
 }
 
 /**

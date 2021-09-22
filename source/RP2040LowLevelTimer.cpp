@@ -5,7 +5,7 @@
 #include "hardware/structs/scb.h"
 #include "RP2040.h"
 
-#define PRESCALE_VALUE_MAX  9
+#define PRESCALE_VALUE_MAX 9
 
 using namespace codal;
 
@@ -13,8 +13,9 @@ using namespace codal;
 
 static RP2040LowLevelTimer *instance = NULL;
 
-static inline irq_handler_t *get_vtable(void) {
-    return (irq_handler_t *) scb_hw->vtor;
+static inline irq_handler_t *get_vtable(void)
+{
+    return (irq_handler_t *)scb_hw->vtor;
 }
 
 inline uint alarm_irq_number(uint8_t num)
@@ -22,7 +23,8 @@ inline uint alarm_irq_number(uint8_t num)
     return TIMER_IRQ_0 + num;
 }
 
-inline int alarms_enabled() {
+inline int alarms_enabled()
+{
     int count = 0;
     for (int i = 0; i < NUM_TIMERS; i++)
         count += NVIC_GetEnableIRQ((IRQn_Type)alarm_irq_number(i));
@@ -41,27 +43,31 @@ void timer_handler(uint8_t instance_number)
         instance->timer_pointer(channel_bitmsk);
 }
 
-extern "C" void isr_timer_0() {
+extern "C" void isr_timer_0()
+{
     timer_handler(0);
 }
-extern "C" void isr_timer_1() {
+extern "C" void isr_timer_1()
+{
     timer_handler(1);
 }
-extern "C" void isr_timer_2() {
+extern "C" void isr_timer_2()
+{
     timer_handler(2);
 }
-extern "C" void isr_timer_3() {
+extern "C" void isr_timer_3()
+{
     timer_handler(3);
 }
 
 RP2040LowLevelTimer::RP2040LowLevelTimer() : LowLevelTimer(3)
 {
-    if (!instance) 
+    if (!instance)
     {
         irq_msk = 0;
         instance = this;
-        this->timer = timer_hw; 
-        disable(); 
+        this->timer = timer_hw;
+        disable();
         setIRQPriority(2);
         setBitMode(BitMode32);
         reset();

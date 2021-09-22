@@ -5,45 +5,46 @@
 #include "RP2040.h"
 #include "hardware/structs/timer.h"
 
-#define TIMER_CHANNEL_COUNT              4
+#define TIMER_CHANNEL_COUNT 4
 namespace codal
 {
-    class RP2040LowLevelTimer : public LowLevelTimer
-    {
-        uint32_t irq_msk;
-        public:
-        timer_hw_t *timer;
+class RP2040LowLevelTimer : public LowLevelTimer
+{
+    uint32_t irq_msk;
 
-        RP2040LowLevelTimer();
+public:
+    timer_hw_t *timer;
 
-        virtual int setIRQPriority(int priority) override;
+    RP2040LowLevelTimer();
 
-        virtual int enable();
+    virtual int setIRQPriority(int priority) override;
 
-        virtual int enableIRQ();
+    virtual int enable();
 
-        virtual int disable();
+    virtual int enableIRQ();
 
-        virtual int disableIRQ();
+    virtual int disable();
 
-        virtual int reset();
+    virtual int disableIRQ();
 
-        virtual int setMode(TimerMode t);
+    virtual int reset();
 
-        virtual int setCompare(uint8_t channel, uint32_t value);
+    virtual int setMode(TimerMode t);
 
-        virtual int offsetCompare(uint8_t channel, uint32_t value);
+    virtual int setCompare(uint8_t channel, uint32_t value);
 
-        virtual int clearCompare(uint8_t channel);
+    virtual int offsetCompare(uint8_t channel, uint32_t value);
 
-        virtual uint32_t captureCounter();
+    virtual int clearCompare(uint8_t channel);
 
-        virtual int setClockSpeed(uint32_t speedKHz);
+    virtual uint32_t captureCounter();
 
-        virtual int setBitMode(TimerBitMode t);
+    virtual int setClockSpeed(uint32_t speedKHz);
 
-        virtual int setSleep(bool doSleep) override;
-    };
-}
+    virtual int setBitMode(TimerBitMode t);
+
+    virtual int setSleep(bool doSleep) override;
+};
+} // namespace codal
 
 #endif

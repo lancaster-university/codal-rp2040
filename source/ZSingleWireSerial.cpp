@@ -27,7 +27,7 @@ extern "C"
     REAL_TIME_FUNC
     void rx_handler(void *p)
     {
-        ZSingleWireSerial* inst = (ZSingleWireSerial *)p;
+        ZSingleWireSerial *inst = (ZSingleWireSerial *)p;
         if (inst && inst->cb)
             inst->cb(SWS_EVT_DATA_RECEIVED);
     }
@@ -35,7 +35,7 @@ extern "C"
     REAL_TIME_FUNC
     void tx_handler(void *p)
     {
-        ZSingleWireSerial* inst = (ZSingleWireSerial *)p;
+        ZSingleWireSerial *inst = (ZSingleWireSerial *)p;
         if (inst && inst->cb)
             inst->cb(SWS_EVT_DATA_SENT);
     }

@@ -3,18 +3,19 @@
 #include "CodalConfig.h"
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
-typedef void (*DMAChannelCallback)(void *);
+    typedef void (*DMAChannelCallback)(void *);
 
-typedef struct __DMAHandlerDef
-{
-  void * context;
-  DMAChannelCallback handler;
-}DMAHandler;
+    typedef struct __DMAHandlerDef
+    {
+        void *context;
+        DMAChannelCallback handler;
+    } DMAHandler;
 
-void DMA_SetChannelCallback(uint8_t channel, DMAChannelCallback handler, void * context);
+    void DMA_SetChannelCallback(uint8_t channel, DMAChannelCallback handler, void *context);
 
 #ifdef __cplusplus
 }
