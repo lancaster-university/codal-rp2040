@@ -49,7 +49,9 @@ set(TARGET_DEPS
     hardware_structs
     hardware_exception
     hardware_divider
-    pico_runtime)
+    pico_runtime
+    pico_float
+    pico_double)
 
 include_directories(${HAL_INCLUDES})
 
