@@ -7,6 +7,7 @@
 
 static DMAHandler dmaHandler[12]; // max channel 12
 
+REAL_TIME_FUNC
 void isr_dma_0 (){
   uint mask = dma_hw->ints0;
   // write to clear
@@ -21,6 +22,7 @@ void isr_dma_0 (){
   }
 }
 
+REAL_TIME_FUNC
 void DMA_SetChannelCallback(uint8_t channel, DMAChannelCallback handler, void * context){
   if (channel >= 12) return;
   dmaHandler[channel].handler = handler;

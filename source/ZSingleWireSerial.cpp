@@ -24,6 +24,7 @@ int dmachTx = -1;
 int dmachRx = -1;
 extern "C"
 {
+    REAL_TIME_FUNC
     void rx_handler(void *p)
     {
         ZSingleWireSerial* inst = (ZSingleWireSerial *)p;
@@ -31,6 +32,7 @@ extern "C"
             inst->cb(SWS_EVT_DATA_RECEIVED);
     }
 
+    REAL_TIME_FUNC
     void tx_handler(void *p)
     {
         ZSingleWireSerial* inst = (ZSingleWireSerial *)p;
@@ -39,6 +41,7 @@ extern "C"
     }
 
     static ZSingleWireSerial *inst;
+    REAL_TIME_FUNC
     void isr_pio0_0()
     {
         uint32_t n = pio0->irq;
@@ -50,6 +53,7 @@ extern "C"
     }
 }
 
+REAL_TIME_FUNC
 static void jd_tx_arm_pin(PIO pio, uint sm, uint pin)
 {
     pio_sm_set_pins_with_mask(pio, sm, 1u << pin, 1u << pin);
@@ -57,6 +61,7 @@ static void jd_tx_arm_pin(PIO pio, uint sm, uint pin)
     pio_gpio_init(pio, pin);
 }
 
+REAL_TIME_FUNC
 static void jd_tx_program_init(PIO pio, uint sm, uint offset, uint pin, uint baud)
 {
     jd_tx_arm_pin(pio, sm, pin);
@@ -71,6 +76,7 @@ static void jd_tx_program_init(PIO pio, uint sm, uint offset, uint pin, uint bau
     pio_sm_set_enabled(pio, sm, false); // enable when need
 }
 
+REAL_TIME_FUNC
 static void jd_rx_arm_pin(PIO pio, uint sm, uint pin)
 {
 #ifdef DEBUG_PIN
@@ -87,6 +93,7 @@ static void jd_rx_arm_pin(PIO pio, uint sm, uint pin)
     gpio_pull_up(pin);
 }
 
+REAL_TIME_FUNC
 static void jd_rx_program_init(PIO pio, uint sm, uint offset, uint pin, uint baud)
 {
     jd_rx_arm_pin(pio, sm, pin);
@@ -139,6 +146,7 @@ ZSingleWireSerial::ZSingleWireSerial(Pin &p) : DMASingleWireSerial(p)
     irq_set_enabled(PIO0_IRQ_0, true);
 }
 
+REAL_TIME_FUNC
 int ZSingleWireSerial::setMode(SingleWireMode sw)
 {
     // either enable rx or tx program
@@ -167,13 +175,16 @@ int ZSingleWireSerial::setMode(SingleWireMode sw)
     return DEVICE_OK;
 }
 
+REAL_TIME_FUNC
 void ZSingleWireSerial::configureRxInterrupt(int enable) {}
 
+REAL_TIME_FUNC
 int ZSingleWireSerial::configureTx(int enable)
 {
     return setMode(enable ? SingleWireTx : SingleWireDisconnected);
 }
 
+REAL_TIME_FUNC
 int ZSingleWireSerial::configureRx(int enable)
 {
     return setMode(enable ? SingleWireRx : SingleWireDisconnected);
@@ -210,6 +221,7 @@ uint32_t ZSingleWireSerial::getBaud()
     return baudrate;
 }
 
+REAL_TIME_FUNC
 int ZSingleWireSerial::sendDMA(uint8_t *data, int len)
 {
     if (status != STATUS_TX)

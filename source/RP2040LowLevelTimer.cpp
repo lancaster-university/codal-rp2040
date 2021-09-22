@@ -157,6 +157,7 @@ int RP2040LowLevelTimer::clearCompare(uint8_t channel)
     return DEVICE_OK;
 }
 
+REAL_TIME_FUNC
 uint32_t RP2040LowLevelTimer::captureCounter()
 {
     return timer_hw->timerawl;

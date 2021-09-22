@@ -16,6 +16,7 @@ int8_t target_get_irq_disabled()
     return irq_disabled;
 }
 
+REAL_TIME_FUNC
 void target_enable_irq()
 {
     irq_disabled--;
@@ -29,6 +30,7 @@ void target_enable_irq()
 #endif
 }
 
+REAL_TIME_FUNC
 void target_disable_irq()
 {
     // always disable just in case - it's just one instruction

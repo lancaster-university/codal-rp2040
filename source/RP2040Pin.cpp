@@ -45,6 +45,7 @@ namespace codal
 
 extern "C" {
 static RP2040Pin *eventPin[NUM_BANK0_GPIOS];
+REAL_TIME_FUNC
 void isr_io_bank0(){
     io_irq_ctrl_hw_t *irq_ctrl_base = &iobank0_hw->proc0_irq_ctrl; // assume io irq only on core0
     for (uint gpio = 0; gpio < NUM_BANK0_GPIOS; gpio++) {
@@ -90,6 +91,7 @@ RP2040Pin::RP2040Pin(int id, PinNumber name, PinCapability capability) : codal::
     this->btn = NULL;
 }
 
+REAL_TIME_FUNC
 void RP2040Pin::disconnect()
 {
     target_disable_irq();
@@ -118,6 +120,7 @@ void RP2040Pin::disconnect()
  * P0.setDigitalValue(1); // P0 is now HI
  * @endcode
  */
+REAL_TIME_FUNC
 int RP2040Pin::setDigitalValue(int value)
 {
     // Ensure we have a valid value.
@@ -149,6 +152,7 @@ int RP2040Pin::setDigitalValue(int value)
  * P0.getDigitalValue(); // P0 is either 0 or 1;
  * @endcode
  */
+REAL_TIME_FUNC
 int RP2040Pin::getDigitalValue()
 {
     // Move into a Digital input state if necessary.
@@ -185,6 +189,7 @@ int RP2040Pin::getDigitalValue()
  * P0.getDigitalValue(PullUp); // P0 is either 0 or 1;
  * @endcode
  */
+REAL_TIME_FUNC
 int RP2040Pin::getDigitalValue(PullMode pull)
 {
     setPull(pull);
@@ -462,6 +467,7 @@ int RP2040Pin::getAnalogPeriod()
  * @return DEVICE_NOT_SUPPORTED if the current pin configuration is anything other
  *         than a digital input, otherwise DEVICE_OK.
  */
+REAL_TIME_FUNC
 int RP2040Pin::setPull(PullMode pull)
 {
     if (pullMode == pull)
@@ -545,6 +551,7 @@ int RP2040Pin::enableRiseFallEvents(int eventType)
  *
  * @return DEVICE_OK on success.
  */
+REAL_TIME_FUNC
 int RP2040Pin::disableEvents()
 {
     if (status & (IO_STATUS_EVENT_ON_EDGE | IO_STATUS_EVENT_PULSE_ON_EDGE | IO_STATUS_INTERRUPT_ON_EDGE | IO_STATUS_TOUCH_IN))
@@ -589,6 +596,7 @@ int RP2040Pin::disableEvents()
  * 85us, around 5khz. If more precision is required, please use the InterruptIn class supplied by
  * ARM mbed.
  */
+REAL_TIME_FUNC
 int RP2040Pin::eventOn(int eventType)
 {
     switch (eventType)
@@ -614,6 +622,7 @@ int RP2040Pin::eventOn(int eventType)
     return DEVICE_OK;
 }
 
+REAL_TIME_FUNC
 int RP2040Pin::getAndSetDigitalValue(int value)
 {
     if (gpio_get_function(name) != GPIO_FUNC_SIO){
