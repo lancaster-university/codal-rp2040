@@ -375,6 +375,7 @@ int RP2040Pin::getAnalogValue()
  *
  * @return 1 if pin is an analog or digital input, 0 otherwise.
  */
+REAL_TIME_FUNC
 int RP2040Pin::isInput()
 {
     return (status & (IO_STATUS_DIGITAL_IN | IO_STATUS_ANALOG_IN)) == 0 ? 0 : 1;
@@ -385,6 +386,7 @@ int RP2040Pin::isInput()
  *
  * @return 1 if pin is an analog or digital output, 0 otherwise.
  */
+REAL_TIME_FUNC
 int RP2040Pin::isOutput()
 {
     return (status & (IO_STATUS_DIGITAL_OUT | IO_STATUS_ANALOG_OUT)) == 0 ? 0 : 1;
@@ -395,6 +397,7 @@ int RP2040Pin::isOutput()
  *
  * @return 1 if pin is digital, 0 otherwise.
  */
+REAL_TIME_FUNC
 int RP2040Pin::isDigital()
 {
     return (status & (IO_STATUS_DIGITAL_IN | IO_STATUS_DIGITAL_OUT)) == 0 ? 0 : 1;

@@ -356,6 +356,7 @@ int ZSingleWireSerial::sendDMA(uint8_t *data, int len)
     return DEVICE_OK;
 }
 
+REAL_TIME_FUNC
 int ZSingleWireSerial::receiveDMA(uint8_t *data, int len)
 {
     if (status != STATUS_RX)
