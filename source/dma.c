@@ -1,4 +1,5 @@
 #include "dma.h"
+#include "ram.h"
 #include "CodalDmesg.h"
 #include "ErrorNo.h"
 
@@ -34,5 +35,5 @@ void DMA_SetChannelCallback(uint8_t channel, DMAChannelCallback handler, void *c
     dmaHandler[channel].handler = handler;
     dmaHandler[channel].context = context;
     dma_channel_set_irq0_enabled(channel, true);
-    irq_set_enabled(DMA_IRQ_0, true);
+    ram_irq_set_enabled(DMA_IRQ_0, true);
 }
