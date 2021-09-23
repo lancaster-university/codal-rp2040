@@ -15,13 +15,13 @@ class ZSingleWireSerial : public DMASingleWireSerial
 protected:
   uint32_t baudrate = 1000000;
   uint8_t txprog, rxprog;
-  uint8_t smtx = 0;
-  uint8_t smrx = 1;
 
   virtual void configureRxInterrupt(int enable);
   virtual int configureTx(int);
   virtual int configureRx(int);
 public:
+  uint8_t smtx = 0;
+  uint8_t smrx = 1;
   ZSingleWireSerial(Pin& p);
 
   virtual int putc(char c);
