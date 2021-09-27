@@ -163,10 +163,12 @@ void RP2040Pin::disconnect()
         (IO_STATUS_EVENT_ON_EDGE | IO_STATUS_EVENT_PULSE_ON_EDGE | IO_STATUS_INTERRUPT_ON_EDGE))
     {
         gpio_set_irq_enabled(name, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, false);
-
+#if 0
+        // just assume we'll use it again
         if (this->evCfg)
             delete this->evCfg;
         this->evCfg = NULL;
+#endif
         eventPin[name] = 0;
     }
     status = 0;

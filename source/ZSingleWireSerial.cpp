@@ -18,6 +18,12 @@ using namespace codal;
 
 #define COPY __attribute__((section(".time_critical.sws")))
 
+COPY static void pulse_log(void)
+{
+    gpio_put(2, 1);
+    gpio_put(2, 0);
+}
+
 namespace codal
 {
 
@@ -32,6 +38,15 @@ COPY void gpio_set_function_(uint gpio, enum gpio_function fn)
     // Zero all fields apart from fsel; we want this IO to do what the peripheral tells it.
     // This doesn't affect e.g. pullup/pulldown, as these are in pad controls.
     iobank0_hw->io[gpio].ctrl = fn << IO_BANK0_GPIO0_CTRL_FUNCSEL_LSB;
+}
+
+COPY void gpio_set_pulls_(uint gpio, bool up, bool down)
+{
+    invalid_params_if(GPIO, gpio >= NUM_BANK0_GPIOS);
+    hw_write_masked(&padsbank0_hw->io[gpio],
+                    (bool_to_bit(up) << PADS_BANK0_GPIO0_PUE_LSB) |
+                        (bool_to_bit(down) << PADS_BANK0_GPIO0_PDE_LSB),
+                    PADS_BANK0_GPIO0_PUE_BITS | PADS_BANK0_GPIO0_PDE_BITS);
 }
 
 static inline void pio_gpio_init_(PIO pio, uint pin)
@@ -141,7 +156,7 @@ extern "C"
     void rx_handler(void *p)
     {
         ZSingleWireSerial *inst = (ZSingleWireSerial *)p;
-        if (inst && inst->cb)
+        if (inst && inst->cb && (inst->status & STATUS_RX))
             inst->cb(SWS_EVT_DATA_RECEIVED);
     }
 
@@ -187,8 +202,9 @@ static void jd_tx_program_init(PIO pio, uint sm, uint offset, uint pin, uint bau
     sm_config_set_out_shift(&c, true, false, 32);
     sm_config_set_out_pins(&c, pin, 1);
     sm_config_set_sideset_pins(&c, pin);
-    //sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_TX);
-    // limit the size of the TX fifo - it's filled by DMA anyway and we have to busy-wait for it flush
+    // sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_TX);
+    // limit the size of the TX fifo - it's filled by DMA anyway and we have to busy-wait for it
+    // flush
     sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_NONE);
     float div = (float)125000000 / (8 * baud);
     sm_config_set_clkdiv(&c, div);
@@ -208,9 +224,8 @@ static void jd_rx_arm_pin(PIO pio, uint sm, uint pin)
 #else
     pio_sm_set_consecutive_pindirs_(pio, sm, pin, 1, false);
 #endif
-
     pio_gpio_init_(pio, pin);
-    gpio_pull_up(pin);
+    gpio_set_pulls_(pin, true, false);
 }
 
 REAL_TIME_FUNC
@@ -274,14 +289,14 @@ int ZSingleWireSerial::setMode(SingleWireMode sw)
     {
         status = STATUS_RX;
         jd_rx_arm_pin(pio0, smrx, p.name);
-        //jd_rx_program_init(pio0, smrx, rxprog, p.name, baudrate);
+        // jd_rx_program_init(pio0, smrx, rxprog, p.name, baudrate);
         pio_sm_set_enabled(pio0, smrx, true);
     }
     else if (sw == SingleWireTx)
     {
         status = STATUS_TX;
         jd_tx_arm_pin(pio0, smtx, p.name);
-        //jd_tx_program_init(pio0, smtx, txprog, p.name, baudrate);
+        // jd_tx_program_init(pio0, smtx, txprog, p.name, baudrate);
         pio_sm_set_enabled(pio0, smtx, true);
     }
     else
@@ -372,6 +387,8 @@ int ZSingleWireSerial::receiveDMA(uint8_t *data, int len)
 
 int ZSingleWireSerial::abortDMA()
 {
+    dma_hw->abort = (1 << dmachRx) | (1 << dmachTx);
+
     if (!(status & (STATUS_RX | STATUS_TX)))
         return DEVICE_INVALID_PARAMETER;
 
