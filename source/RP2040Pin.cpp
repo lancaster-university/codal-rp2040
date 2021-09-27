@@ -460,7 +460,7 @@ int RP2040Pin::isTouched()
  * @return DEVICE_OK on success, DEVICE_INVALID_PARAMETER if value is out of range, or
  * DEVICE_NOT_SUPPORTED if the given pin does not have analog capability.
  */
-int RP2040Pin::setServoPulseUs(int pulseWidth)
+int RP2040Pin::setServoPulseUs(uint32_t pulseWidth)
 {
     // check if this pin has an analogue mode...
     if (!(PIN_CAPABILITY_ANALOG & capability))
@@ -480,7 +480,7 @@ int RP2040Pin::setServoPulseUs(int pulseWidth)
  *
  * @return DEVICE_OK on success.
  */
-int RP2040Pin::setAnalogPeriodUs(int period)
+int RP2040Pin::setAnalogPeriodUs(uint32_t period)
 {
     // if (status & IO_STATUS_ANALOG_OUT)
     //     // keep the % of duty cycle
@@ -696,20 +696,15 @@ int RP2040Pin::eventOn(int eventType)
 REAL_TIME_FUNC
 int RP2040Pin::getAndSetDigitalValue(int value)
 {
-    if (gpio_get_function(name) != GPIO_FUNC_SIO)
-    {
-        gpio_set_function_(name, GPIO_FUNC_SIO);
-    }
-    if (gpio_get_dir(name) == GPIO_IN)
-    {
-        disconnect();
-        setDigitalValue(value);
-    }
+    uint32_t mask = 1 << name;
+
+    gpio_put(name, value);
+    if (value == 0)
+        gpio_set_dir_out_masked(gpio_get_all() & mask);
     else
-    {
-        gpio_put(name, value);
-    }
-    return 0;
+        gpio_set_dir_out_masked((gpio_get_all() & mask) ^ mask);
+
+    return gpio_is_dir_out(name) ? DEVICE_OK : DEVICE_BUSY;
 }
 
 /**
