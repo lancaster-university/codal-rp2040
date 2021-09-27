@@ -4,6 +4,7 @@
 #include "hardware/timer.h"
 #include "hardware/structs/scb.h"
 #include "RP2040.h"
+#include "ram.h"
 
 #define PRESCALE_VALUE_MAX 9
 
@@ -131,6 +132,7 @@ int RP2040LowLevelTimer::setMode(TimerMode t)
     return DEVICE_NOT_IMPLEMENTED;
 }
 
+REAL_TIME_FUNC
 int RP2040LowLevelTimer::setCompare(uint8_t channel, uint32_t value)
 {
     if (channel > getChannelCount() - 1)
@@ -138,7 +140,7 @@ int RP2040LowLevelTimer::setCompare(uint8_t channel, uint32_t value)
 
     timer_hw->alarm[channel] = value;
     timer_hw->inte = (1 << channel);
-    irq_set_enabled(alarm_irq_number(channel), true);
+    ram_irq_set_enabled(alarm_irq_number(channel), true);
 
     return DEVICE_OK;
 }
