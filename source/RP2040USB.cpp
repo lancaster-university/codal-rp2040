@@ -110,15 +110,26 @@ extern "C" void isr_usbctrl(void)
         usb_hw_clear->sie_status = USB_SIE_STATUS_SETUP_REC_BITS;
         USBSetup setup;
         memcpy(&setup, (void *)usb_dpram->setup_packet, sizeof(setup));
-        cusb->ctrlIn->userdata |= 1; // next_pid==1
-        cusb->setupRequest(setup);
+        if (cusb && cusb->ctrlIn)
+        {
+            cusb->ctrlIn->userdata |= 1; // next_pid==1
+            cusb->setupRequest(setup);
+        }
     }
 
-    cusb->interruptHandler();
+    if (cusb)
+        cusb->interruptHandler();
 
     // Buffer status, one or more buffers have completed
     if (status & USB_INTS_BUFF_STATUS_BITS)
+    {
+        if (cusb && cusb->ctrlIn)
+            cusb->ctrlOut->read(NULL, 0); // flush any ZLP on EP0
+        usb_hw->buf_status = 0x1;         // we don't care about EP0 IN IRQ
+        if (usb_hw->buf_status)
+            DMESG("BUF %x", usb_hw->buf_status); // shouldn't happen
         usb_hw_clear->sie_status = USB_INTS_BUFF_STATUS_BITS;
+    }
 }
 
 void usb_set_address(uint16_t wValue)
@@ -299,8 +310,9 @@ int UsbEndpointOut::read(void *dst, int maxlen)
 
 static void writeEP(UsbEndpointIn *t, const void *buf, int len)
 {
+    //DMESG("wr ep=%d l=%d", t->ep, len);
     // Prepare buffer control register value
-    uint32_t val = USB_MAX_PACKET_SIZE | USB_BUF_CTRL_AVAIL | USB_BUF_CTRL_FULL;
+    uint32_t val = len | USB_BUF_CTRL_AVAIL | USB_BUF_CTRL_FULL;
 
     // Need to copy the data from the user buffer to the usb memory
     memcpy((void *)in_buffer(t->ep), (void *)buf, len);
@@ -312,9 +324,10 @@ static void writeEP(UsbEndpointIn *t, const void *buf, int len)
     usb_dpram->ep_buf_ctrl[t->ep].in = val;
 
     // Wait for transfer to complete
-    while (!(usb_dpram->ep_buf_ctrl[t->ep].in & USB_BUF_CTRL_FULL))
+    while (usb_dpram->ep_buf_ctrl[t->ep].in & USB_BUF_CTRL_FULL)
     {
     }
+    //DMESG("wr done");
 }
 
 int UsbEndpointIn::write(const void *src, int len)
@@ -337,6 +350,9 @@ int UsbEndpointIn::write(const void *src, int len)
         wLength = 0;
     }
 
+    if (len == 0)
+        zlp = 1;
+
     for (int p = 0; p < len; p += epSize)
     {
         int chunk = len - p;
@@ -346,7 +362,7 @@ int UsbEndpointIn::write(const void *src, int len)
     }
 
     // We just send ZLP manually if needed.
-    if (zlp && len && (len & (epSize - 1)) == 0)
+    if (zlp && (len & (epSize - 1)) == 0)
         writeEP(this, "", 0);
 
     return DEVICE_OK;
