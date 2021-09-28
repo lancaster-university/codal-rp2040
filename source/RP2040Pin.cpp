@@ -468,10 +468,6 @@ int RP2040Pin::setServoPulseUs(uint32_t pulseWidth)
     if (!(PIN_CAPABILITY_ANALOG & capability))
         return DEVICE_NOT_SUPPORTED;
 
-    // sanitise the pulse width
-    if (pulseWidth < 0)
-        return DEVICE_INVALID_PARAMETER;
-
     return setPWM(pulseWidth, DEVICE_DEFAULT_PWM_PERIOD);
 }
 

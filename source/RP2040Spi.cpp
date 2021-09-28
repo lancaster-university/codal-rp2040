@@ -96,7 +96,7 @@ int RP2040SPI::startTransfer(const uint8_t *txBuffer, uint32_t txSize, uint8_t *
     {
         doneHandler(arg);
     }
-    return DEVICE_OK;
+    return res;
 }
 
 void RP2040SPI::_complete(void)

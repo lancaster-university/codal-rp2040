@@ -18,6 +18,7 @@ using namespace codal;
 
 #define COPY __attribute__((section(".time_critical.sws")))
 
+__attribute__((used))
 COPY static void pulse_log(void)
 {
     gpio_put(2, 1);
