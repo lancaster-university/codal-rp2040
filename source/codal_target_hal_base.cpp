@@ -6,7 +6,6 @@
 #include "Timer.h"
 
 #include "hardware/flash.h"
-#include "pico/unique_id.h"
 
 // #define NO_IRQ_COUNTER
 
@@ -46,11 +45,18 @@ void target_wait_for_event()
     __WFE();
 }
 
+REAL_TIME_FUNC
 uint64_t target_get_serial()
 {
-    pico_unique_board_id_t id;
-    pico_get_unique_board_id(&id);
-    return *(uint64_t*)id.id;
+    static uint64_t id_cache;
+    if (!id_cache)
+    {
+        // flash operations can only be done with
+        target_disable_irq();
+        flash_get_unique_id((uint8_t*)&id_cache);
+        target_enable_irq();
+    }
+    return id_cache;
 }
 
 void target_reset()
