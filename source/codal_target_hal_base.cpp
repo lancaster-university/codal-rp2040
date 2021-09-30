@@ -6,6 +6,7 @@
 #include "Timer.h"
 
 #include "hardware/flash.h"
+#include "pico/unique_id.h"
 
 // #define NO_IRQ_COUNTER
 
@@ -47,9 +48,9 @@ void target_wait_for_event()
 
 uint64_t target_get_serial()
 {
-    uint8_t buff[8];
-    flash_get_unique_id(buff);
-    return *(uint64_t *)buff;
+    pico_unique_board_id_t id;
+    pico_get_unique_board_id(&id);
+    return *(uint64_t*)id.id;
 }
 
 void target_reset()
