@@ -194,11 +194,13 @@ int RP2040Pin::setDigitalValue(int value)
     // Ensure we have a valid value.
     value = ((value > 0) ? 1 : 0);
 
-    // Move into a Digital input state if necessary.
+    // Move into a Digital output state if necessary.
     if (!(status & IO_STATUS_DIGITAL_OUT))
     {
         disconnect();
         gpio_init(name);
+        // set first to avoid glitch when setting directions
+        gpio_put(name, value);
         gpio_set_dir(name, GPIO_OUT);
         status |= IO_STATUS_DIGITAL_OUT;
     }
