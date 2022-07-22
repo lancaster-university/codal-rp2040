@@ -109,6 +109,7 @@ void RP2040SPI::_complete(void)
     {
         dma_channel_unclaim(rxCh);
     }
+    txCh = rxCh = -1;
     if (doneHandler)
     {
         PVoidCallback done = doneHandler;
@@ -137,38 +138,38 @@ int RP2040SPI::startTransferDma(const uint8_t *txBuffer, uint32_t txSize, uint8_
     if (txBuffer)
     {
         txCh = dma_claim_unused_channel(false);
-        if (txCh >= 0)
-        {
-            dma_channel_config c = dma_channel_get_default_config(txCh);
-            channel_config_set_transfer_data_size(&c, DMA_SIZE_8);
-            channel_config_set_dreq(&c, spi_get_index(spi_inst) ? DREQ_SPI1_TX : DREQ_SPI0_TX);
-            dma_channel_configure(
-                txCh, &c,
-                &spi_get_hw(spi_inst)->dr, // txbuff > spi
-                txBuffer,
-                txSize, // element count (each element is of size transfer_data_size)
-                false); // don't start yet
-            channel_mask += (1u << txCh);
-            channel_irq = txCh;
-        }
+        if (txCh < 0)
+            return DEVICE_NO_RESOURCES;
+        dma_channel_config c = dma_channel_get_default_config(txCh);
+        channel_config_set_transfer_data_size(&c, DMA_SIZE_8);
+        channel_config_set_dreq(&c, spi_get_index(spi_inst) ? DREQ_SPI1_TX : DREQ_SPI0_TX);
+        dma_channel_configure(txCh, &c,
+                              &spi_get_hw(spi_inst)->dr, // txbuff > spi
+                              txBuffer,
+                              txSize, // element count (each element is of size transfer_data_size)
+                              false); // don't start yet
+        channel_mask += (1u << txCh);
+        channel_irq = txCh;
     }
     if (rxBuffer)
     {
         rxCh = dma_claim_unused_channel(false);
-        if (txCh >= 0)
+        if (rxCh < 0)
         {
-            dma_channel_config c = dma_channel_get_default_config(rxCh);
-            channel_config_set_transfer_data_size(&c, DMA_SIZE_8);
-            channel_config_set_dreq(&c, spi_get_index(spi_inst) ? DREQ_SPI1_RX : DREQ_SPI0_RX);
-            dma_channel_configure(
-                rxCh, &c,
-                rxBuffer, // spi > rx buff
-                &spi_get_hw(spi_inst)->dr,
-                rxSize, // element count (each element is of size transfer_data_size)
-                false); // don't start yet
-            channel_mask += (1u << rxCh);
-            channel_irq = rxCh;
+            if (txCh >= 0)
+                dma_channel_unclaim(txCh);
+            return DEVICE_NO_RESOURCES;
         }
+        dma_channel_config c = dma_channel_get_default_config(rxCh);
+        channel_config_set_transfer_data_size(&c, DMA_SIZE_8);
+        channel_config_set_dreq(&c, spi_get_index(spi_inst) ? DREQ_SPI1_RX : DREQ_SPI0_RX);
+        dma_channel_configure(rxCh, &c,
+                              rxBuffer, // spi > rx buff
+                              &spi_get_hw(spi_inst)->dr,
+                              rxSize, // element count (each element is of size transfer_data_size)
+                              false); // don't start yet
+        channel_mask += (1u << rxCh);
+        channel_irq = rxCh;
     }
     this->doneHandler = doneHandler;
     this->doneHandlerArg = arg;
