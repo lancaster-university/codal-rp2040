@@ -34,6 +34,7 @@ void DMA_SetChannelCallback(uint8_t channel, DMAChannelCallback handler, void *c
         return;
     dmaHandler[channel].handler = handler;
     dmaHandler[channel].context = context;
+    dma_hw->ints0 = (1 << DMA_IRQ_0); // clear any pending irq
     dma_channel_set_irq0_enabled(channel, true);
     ram_irq_set_enabled(DMA_IRQ_0, true);
 }

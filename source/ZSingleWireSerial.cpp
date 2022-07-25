@@ -10,6 +10,7 @@
 #include "hardware/irq.h"
 #include "jacdac.pio.h"
 #include "dma.h"
+#include "ram.h"
 #include "hardware/structs/iobank0.h"
 
 #include "codal_target_hal.h"
@@ -18,8 +19,7 @@ using namespace codal;
 
 #define COPY __attribute__((section(".time_critical.sws")))
 
-__attribute__((used))
-COPY static void pulse_log(void)
+__attribute__((used)) COPY static void pulse_log(void)
 {
     gpio_put(2, 1);
     gpio_put(2, 0);
@@ -151,39 +151,38 @@ COPY void pio_sm_init_(PIO pio, uint sm, uint initial_pc, const pio_sm_config *c
 int dmachTx = -1;
 int dmachRx = -1;
 
-extern "C"
+REAL_TIME_FUNC
+static void rx_handler(void *p)
 {
-    REAL_TIME_FUNC
-    void rx_handler(void *p)
-    {
-        ZSingleWireSerial *inst = (ZSingleWireSerial *)p;
-        if (inst && inst->cb && (inst->status & STATUS_RX))
-            inst->cb(SWS_EVT_DATA_RECEIVED);
-    }
+    ZSingleWireSerial *inst = (ZSingleWireSerial *)p;
+    if (inst && inst->cb && (inst->status & STATUS_RX))
+        inst->cb(SWS_EVT_DATA_RECEIVED);
+}
 
-    REAL_TIME_FUNC
-    void tx_handler(void *p)
+REAL_TIME_FUNC
+static void tx_handler(void *p)
+{
+    ZSingleWireSerial *inst = (ZSingleWireSerial *)p;
+    if (inst && inst->cb)
     {
-        ZSingleWireSerial *inst = (ZSingleWireSerial *)p;
-        if (inst && inst->cb)
-        {
-            // wait for the data to be actually sent
-            while (!(pio0->fdebug & (1u << (PIO_FDEBUG_TXSTALL_LSB + inst->smtx))))
-                ;
-            inst->cb(SWS_EVT_DATA_SENT);
-        }
-    }
+        // first clear any pending stalls
+        pio0->fdebug = (1u << (PIO_FDEBUG_TXSTALL_LSB + inst->smtx));
 
-    static ZSingleWireSerial *inst;
-    REAL_TIME_FUNC
-    void isr_pio0_0()
+        // wait for the data to be actually sent - i.e. stall
+        while (!(pio0->fdebug & (1u << (PIO_FDEBUG_TXSTALL_LSB + inst->smtx))))
+            ;
+        inst->cb(SWS_EVT_DATA_SENT);
+    }
+}
+
+static ZSingleWireSerial *inst;
+extern "C" REAL_TIME_FUNC void isr_pio0_0()
+{
+    uint32_t n = pio0->irq;
+    pio0->irq = n;
+    if (n & PIO_BREAK_IRQ)
     {
-        uint32_t n = pio0->irq;
-        pio0->irq = n;
-        if (n & PIO_BREAK_IRQ)
-        {
-            inst->cb(SWS_EVT_DATA_RECEIVED);
-        }
+        inst->cb(SWS_EVT_DATA_RECEIVED);
     }
 }
 
@@ -207,7 +206,7 @@ static void jd_tx_program_init(PIO pio, uint sm, uint offset, uint pin, uint bau
     // limit the size of the TX fifo - it's filled by DMA anyway and we have to busy-wait for it
     // flush
     sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_NONE);
-    float div = (float)125000000 / (8 * baud);
+    float div = (float)clock_get_hz(clk_sys) / (8 * baud);
     sm_config_set_clkdiv(&c, div);
     pio_sm_init_(pio, sm, offset, &c);
     pio_sm_set_enabled(pio, sm, false); // enable when need
@@ -241,7 +240,7 @@ static void jd_rx_program_init(PIO pio, uint sm, uint offset, uint pin, uint bau
 #ifdef DEBUG_PIN
     sm_config_set_sideset_pins(&c, 29);
 #endif
-    float div = (float)125000000 / (8 * baud);
+    float div = (float)clock_get_hz(clk_sys) / (8 * baud);
     sm_config_set_clkdiv(&c, div);
     pio_sm_init_(pio, sm, offset, &c);
     pio_sm_set_enabled(pio, sm, false); // enable when need
@@ -278,13 +277,19 @@ ZSingleWireSerial::ZSingleWireSerial(Pin &p) : DMASingleWireSerial(p)
     channel_config_set_transfer_data_size(&c, DMA_SIZE_8);
     channel_config_set_dreq(&c, pio_get_dreq(pio0, smtx, true));
     dma_channel_configure(dmachTx, &c, &pio0->txf[smtx], NULL, 0, false);
+
     // pio irq for dma rx break handling
-    irq_set_enabled(PIO0_IRQ_0, true);
+    ram_irq_set_priority(DMA_IRQ_0, 0);
+    ram_irq_set_priority(PIO0_IRQ_0, 0);
+
+    ram_irq_set_enabled(PIO0_IRQ_0, true);
 }
 
 REAL_TIME_FUNC
 int ZSingleWireSerial::setMode(SingleWireMode sw)
 {
+    target_disable_irq();
+
     // either enable rx or tx program
     if (sw == SingleWireRx)
     {
@@ -306,7 +311,10 @@ int ZSingleWireSerial::setMode(SingleWireMode sw)
         gpio_set_function_(p.name, GPIO_FUNC_SIO); // release gpio
         pio_sm_set_enabled(pio0, smtx, false);
         pio_sm_set_enabled(pio0, smrx, false);
+        pio_set_irq0_source_enabled(pio0, pis_interrupt1, false);
     }
+
+    target_enable_irq();
 
     return DEVICE_OK;
 }
@@ -394,7 +402,6 @@ int ZSingleWireSerial::abortDMA()
         return DEVICE_INVALID_PARAMETER;
 
     setMode(SingleWireDisconnected);
-    pio_set_irq0_source_enabled(pio0, pis_interrupt1, false);
 
     return DEVICE_OK;
 }

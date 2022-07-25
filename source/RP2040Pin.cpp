@@ -34,6 +34,7 @@ DEALINGS IN THE SOFTWARE.
 #include "codal_target_hal.h"
 #include "codal-core/inc/types/Event.h"
 #include "CodalDmesg.h"
+#include "ram.h"
 
 #include "hardware/gpio.h"
 #include "hardware/structs/iobank0.h"
@@ -592,7 +593,8 @@ int RP2040Pin::enableRiseFallEvents(int eventType)
 
         eventPin[name] = this;
         gpio_set_irq_enabled(name, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true);
-        irq_set_enabled(IO_IRQ_BANK0, true);
+        ram_irq_set_priority(IO_IRQ_BANK0, 0);
+        ram_irq_set_enabled(IO_IRQ_BANK0, true);
 
         if (this->evCfg == NULL)
             this->evCfg = new ZEventConfig;

@@ -140,6 +140,7 @@ int RP2040LowLevelTimer::setCompare(uint8_t channel, uint32_t value)
 
     timer_hw->alarm[channel] = value;
     timer_hw->inte = (1 << channel);
+    ram_irq_set_priority(alarm_irq_number(channel), 2 << 6);
     ram_irq_set_enabled(alarm_irq_number(channel), true);
 
     return DEVICE_OK;

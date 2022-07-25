@@ -67,7 +67,7 @@ void usb_configure(uint8_t numEndpoints)
     memset(usb_dpram, 0, sizeof(*usb_dpram));
 
     // Enable USB interrupt at processor
-    irq_set_enabled(USBCTRL_IRQ, true);
+    ram_irq_set_enabled(USBCTRL_IRQ, true);
 
     // Mux the controller to the onboard usb phy
     usb_hw->muxing = USB_USB_MUXING_TO_PHY_BITS | USB_USB_MUXING_SOFTCON_BITS;
