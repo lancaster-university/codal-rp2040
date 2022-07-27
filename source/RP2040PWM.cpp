@@ -101,7 +101,8 @@ void RP2040PWM::dmaCB(int ch)
 
     dump();
 
-    DMA_SetChannelCallback(dmaCh[ch], ch == 0 ? dma0_cb : dma1_cb, this);
+    // at 44kHz the 256 samples is around 5ms - no need for any high priority here
+    DMA_SetChannelCallback_lowpri(dmaCh[ch], ch == 0 ? dma0_cb : dma1_cb, this);
 }
 
 int RP2040PWM::setSampleRate(int frequency)

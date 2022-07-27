@@ -16,6 +16,7 @@ extern "C"
     } DMAHandler;
 
     void DMA_SetChannelCallback(uint8_t channel, DMAChannelCallback handler, void *context);
+    void DMA_SetChannelCallback_lowpri(uint8_t channel, DMAChannelCallback handler, void *context);
 
 #ifdef __cplusplus
 }

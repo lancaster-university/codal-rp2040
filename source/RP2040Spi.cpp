@@ -176,7 +176,7 @@ int RP2040SPI::startTransferDma(const uint8_t *txBuffer, uint32_t txSize, uint8_
     this->doneHandler = doneHandler;
     this->doneHandlerArg = arg;
 
-    DMA_SetChannelCallback(channel_irq, _irqDone, this);
+    DMA_SetChannelCallback_lowpri(channel_irq, _irqDone, this);
     dma_start_channel_mask(channel_mask);
 
     return DEVICE_OK;

@@ -280,6 +280,7 @@ ZSingleWireSerial::ZSingleWireSerial(Pin &p) : DMASingleWireSerial(p)
 
     // pio irq for dma rx break handling
     ram_irq_set_priority(DMA_IRQ_0, 0);
+    ram_irq_set_priority(DMA_IRQ_1, 1 << 6);
     ram_irq_set_priority(PIO0_IRQ_0, 0);
 
     ram_irq_set_enabled(PIO0_IRQ_0, true);
