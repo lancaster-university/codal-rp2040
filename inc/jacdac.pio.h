@@ -37,7 +37,6 @@ static inline pio_sm_config jd_tx_program_get_default_config(uint offset) {
     sm_config_set_sideset(&c, 2, true, false);
     return c;
 }
-
 #endif
 
 // ----- //
@@ -45,27 +44,28 @@ static inline pio_sm_config jd_tx_program_get_default_config(uint offset) {
 // ----- //
 
 #define jd_rx_wrap_target 0
-#define jd_rx_wrap 9
+#define jd_rx_wrap 10
 
 static const uint16_t jd_rx_program_instructions[] = {
             //     .wrap_target
     0x2020, //  0: wait   0 pin, 0                   
     0xf727, //  1: set    x, 7            side 0 [7] 
-    0xa342, //  2: nop                           [3] 
-    0x4001, //  3: in     pins, 1                    
-    0x0643, //  4: jmp    x--, 3                 [6] 
-    0x18c9, //  5: jmp    pin, 9          side 1     
-    0xd001, //  6: irq    nowait 1        side 0     
-    0x20a0, //  7: wait   1 pin, 0                   
-    0x1800, //  8: jmp    0               side 1     
-    0xa042, //  9: nop                               
+    0xa142, //  2: nop                           [1] 
+    0x5801, //  3: in     pins, 1         side 1     
+    0xb042, //  4: nop                    side 0     
+    0x0543, //  5: jmp    x--, 3                 [5] 
+    0x18ca, //  6: jmp    pin, 10         side 1     
+    0xd001, //  7: irq    nowait 1        side 0     
+    0x20a0, //  8: wait   1 pin, 0                   
+    0x1800, //  9: jmp    0               side 1     
+    0xa042, // 10: nop                               
             //     .wrap
 };
 
 #if !PICO_NO_HARDWARE
 static const struct pio_program jd_rx_program = {
     .instructions = jd_rx_program_instructions,
-    .length = 10,
+    .length = 11,
     .origin = -1,
 };
 
