@@ -66,6 +66,7 @@ void usb_configure(uint8_t numEndpoints)
     memset(usb_hw, 0, sizeof(*usb_hw));
     memset(usb_dpram, 0, sizeof(*usb_dpram));
 
+    ram_irq_set_priority(USBCTRL_IRQ, 1 << 6);
     // Enable USB interrupt at processor
     ram_irq_set_enabled(USBCTRL_IRQ, true);
 
@@ -308,10 +309,13 @@ int UsbEndpointOut::read(void *dst, int maxlen)
     return 0;
 }
 
-static void writeEP(UsbEndpointIn *t, const void *buf, int len)
+static int writeEP(UsbEndpointIn *t, const void *buf, int len)
 {
-    //DMESG("wr ep=%d l=%d", t->ep, len);
-    // Prepare buffer control register value
+    if (usb_dpram->ep_buf_ctrl[t->ep].in & USB_BUF_CTRL_FULL)
+        return DEVICE_BUSY;
+
+    // DMESG("wr ep=%d l=%d", t->ep, len);
+    //  Prepare buffer control register value
     uint32_t val = len | USB_BUF_CTRL_AVAIL | USB_BUF_CTRL_FULL;
 
     // Need to copy the data from the user buffer to the usb memory
@@ -323,11 +327,16 @@ static void writeEP(UsbEndpointIn *t, const void *buf, int len)
 
     usb_dpram->ep_buf_ctrl[t->ep].in = val;
 
+    if (t->flags & USB_EP_FLAG_ASYNC)
+        return 0;
+
     // Wait for transfer to complete
     while (usb_dpram->ep_buf_ctrl[t->ep].in & USB_BUF_CTRL_FULL)
     {
     }
-    //DMESG("wr done");
+    // DMESG("wr done");
+
+    return 0;
 }
 
 int UsbEndpointIn::write(const void *src, int len)
@@ -337,6 +346,9 @@ int UsbEndpointIn::write(const void *src, int len)
 
     int epSize = USB_MAX_PACKET_SIZE;
     int zlp = !(flags & USB_EP_FLAG_NO_AUTO_ZLP);
+
+    if (flags & USB_EP_FLAG_ASYNC)
+        zlp = 0;
 
     if (wLength)
     {
@@ -358,14 +370,21 @@ int UsbEndpointIn::write(const void *src, int len)
         int chunk = len - p;
         if (chunk > epSize)
             chunk = epSize;
-        writeEP(this, (const uint8_t *)src + p, chunk);
+        int r = writeEP(this, (const uint8_t *)src + p, chunk);
+        if (r)
+            return r;
     }
 
     // We just send ZLP manually if needed.
     if (zlp && (len & (epSize - 1)) == 0)
-        writeEP(this, "", 0);
+        return writeEP(this, "", 0);
 
     return DEVICE_OK;
+}
+
+bool UsbEndpointIn::canWrite()
+{
+    return (usb_dpram->ep_buf_ctrl[ep].in & USB_BUF_CTRL_FULL) == 0;
 }
 
 #endif
