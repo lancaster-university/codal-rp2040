@@ -30,12 +30,14 @@ RP2040SPI::RP2040SPI(Pin &mosi, Pin &miso, Pin &sclk) : codal::SPI()
 
     this->transferCompleteEventCode = codal::allocateNotifyEvent();
 
-    // TODO: set instance by check pin config
-    spi_inst = spi0;
+    spi_inst = (this->sclk->name >> 3) & 1 ? spi1 : spi0;
 
+    // this assumes pins are correct
     gpio_set_function(this->sclk->name, GPIO_FUNC_SPI);
-    gpio_set_function(this->miso->name, GPIO_FUNC_SPI);
-    gpio_set_function(this->mosi->name, GPIO_FUNC_SPI);
+    if (this->miso)
+        gpio_set_function(this->miso->name, GPIO_FUNC_SPI);
+    if (this->mosi)
+        gpio_set_function(this->mosi->name, GPIO_FUNC_SPI);
 
     spi_init(spi_inst, this->baudrate);
 }

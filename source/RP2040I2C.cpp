@@ -16,8 +16,9 @@ RP2040I2C::RP2040I2C(Pin &sda, Pin &scl) : codal::I2C(sda, scl){
   this->sda = (RP2040Pin *)&sda;
   this->scl = (RP2040Pin *)&scl;
 
-  i2c_inst = i2c0;
+  i2c_inst = (sda.name >> 1) & 1 ? i2c1 : i2c0;
 
+  // pins have to be correct
   gpio_set_function(scl.name, GPIO_FUNC_I2C);
   gpio_set_function(sda.name, GPIO_FUNC_I2C);
   gpio_pull_up(scl.name);
