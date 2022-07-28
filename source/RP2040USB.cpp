@@ -126,9 +126,7 @@ extern "C" void isr_usbctrl(void)
     {
         if (cusb && cusb->ctrlIn)
             cusb->ctrlOut->read(NULL, 0); // flush any ZLP on EP0
-        usb_hw->buf_status = 0x1;         // we don't care about EP0 IN IRQ
-        if (usb_hw->buf_status)
-            DMESG("BUF %x", usb_hw->buf_status); // shouldn't happen
+        usb_hw->buf_status = usb_hw->buf_status;
         usb_hw_clear->sie_status = USB_INTS_BUFF_STATUS_BITS;
     }
 }
@@ -348,7 +346,10 @@ int UsbEndpointIn::write(const void *src, int len)
     int zlp = !(flags & USB_EP_FLAG_NO_AUTO_ZLP);
 
     if (flags & USB_EP_FLAG_ASYNC)
+    {
+        usb_dpram->ep_ctrl[ep - 1].in |= EP_CTRL_INTERRUPT_PER_BUFFER;
         zlp = 0;
+    }
 
     if (wLength)
     {
