@@ -139,7 +139,7 @@ int RP2040LowLevelTimer::setCompare(uint8_t channel, uint32_t value)
         return DEVICE_INVALID_PARAMETER;
 
     timer_hw->alarm[channel] = value;
-    timer_hw->inte = (1 << channel);
+    hw_set_bits(&timer_hw->inte, (1 << channel));
     ram_irq_set_priority(alarm_irq_number(channel), 2 << 6);
     ram_irq_set_enabled(alarm_irq_number(channel), true);
 
@@ -152,7 +152,7 @@ int RP2040LowLevelTimer::offsetCompare(uint8_t channel, uint32_t value)
         return DEVICE_INVALID_PARAMETER;
 
     timer_hw->alarm[channel] = timer_hw->alarm[channel] + value;
-    timer_hw->inte = (1 << channel);
+    hw_set_bits(&timer_hw->inte, (1 << channel));
 
     return DEVICE_OK;
 }
@@ -162,7 +162,7 @@ int RP2040LowLevelTimer::clearCompare(uint8_t channel)
     if (channel > getChannelCount() - 1)
         return DEVICE_INVALID_PARAMETER;
 
-    timer_hw->inte = (1 << channel);
+    hw_clear_bits(&timer_hw->inte, (1 << channel));
     return DEVICE_OK;
 }
 
