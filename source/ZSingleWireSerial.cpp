@@ -28,23 +28,23 @@ __attribute__((used)) COPY static void pulse_log(void)
 namespace codal
 {
 
-COPY void gpio_set_function_(uint gpio, enum gpio_function fn)
+COPY void gpio_set_function_(uint gpio, gpio_function_t fn)
 {
-    invalid_params_if(GPIO, gpio >= NUM_BANK0_GPIOS);
-    invalid_params_if(GPIO, ((uint32_t)fn << IO_BANK0_GPIO0_CTRL_FUNCSEL_LSB) &
+    invalid_params_if(HARDWARE_GPIO, gpio >= NUM_BANK0_GPIOS);
+    invalid_params_if(HARDWARE_GPIO, ((uint32_t)fn << IO_BANK0_GPIO0_CTRL_FUNCSEL_LSB) &
                                 ~IO_BANK0_GPIO0_CTRL_FUNCSEL_BITS);
     // Set input enable on, output disable off
-    hw_write_masked(&padsbank0_hw->io[gpio], PADS_BANK0_GPIO0_IE_BITS,
+    hw_write_masked(&pads_bank0_hw->io[gpio], PADS_BANK0_GPIO0_IE_BITS,
                     PADS_BANK0_GPIO0_IE_BITS | PADS_BANK0_GPIO0_OD_BITS);
     // Zero all fields apart from fsel; we want this IO to do what the peripheral tells it.
     // This doesn't affect e.g. pullup/pulldown, as these are in pad controls.
-    iobank0_hw->io[gpio].ctrl = fn << IO_BANK0_GPIO0_CTRL_FUNCSEL_LSB;
+    io_bank0_hw->io[gpio].ctrl = fn << IO_BANK0_GPIO0_CTRL_FUNCSEL_LSB;
 }
 
 COPY void gpio_set_pulls_(uint gpio, bool up, bool down)
 {
-    invalid_params_if(GPIO, gpio >= NUM_BANK0_GPIOS);
-    hw_write_masked(&padsbank0_hw->io[gpio],
+    invalid_params_if(HARDWARE_GPIO, gpio >= NUM_BANK0_GPIOS);
+    hw_write_masked(&pads_bank0_hw->io[gpio],
                     (bool_to_bit(up) << PADS_BANK0_GPIO0_PUE_LSB) |
                         (bool_to_bit(down) << PADS_BANK0_GPIO0_PDE_LSB),
                     PADS_BANK0_GPIO0_PUE_BITS | PADS_BANK0_GPIO0_PDE_BITS);
@@ -53,7 +53,7 @@ COPY void gpio_set_pulls_(uint gpio, bool up, bool down)
 static inline void pio_gpio_init_(PIO pio, uint pin)
 {
     check_pio_param(pio);
-    valid_params_if(PIO, pin < 32);
+    valid_params_if(HARDWARE_PIO, pin < 32);
     gpio_set_function_(pin, pio == pio0 ? GPIO_FUNC_PIO0 : GPIO_FUNC_PIO1);
 }
 
@@ -61,7 +61,7 @@ COPY void pio_sm_set_consecutive_pindirs_(PIO pio, uint sm, uint pin, uint count
 {
     check_pio_param(pio);
     check_sm_param(sm);
-    valid_params_if(PIO, pin < 32u);
+    valid_params_if(HARDWARE_PIO, pin < 32u);
     uint32_t pinctrl_saved = pio->sm[sm].pinctrl;
     uint pindir_val = is_out ? 0x1f : 0;
     while (count > 5)
@@ -112,7 +112,7 @@ COPY void pio_sm_set_pindirs_with_mask_(PIO pio, uint sm, uint32_t pindirs, uint
 
 COPY void pio_sm_init_(PIO pio, uint sm, uint initial_pc, const pio_sm_config *config)
 {
-    valid_params_if(PIO, initial_pc < PIO_INSTRUCTION_COUNT);
+    valid_params_if(HARDWARE_PIO, initial_pc < PIO_INSTRUCTION_COUNT);
     // Halt the machine, set some sensible defaults
     pio_sm_set_enabled(pio, sm, false);
 

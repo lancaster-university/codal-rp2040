@@ -33,6 +33,11 @@
     .global save_register_context
     .global restore_register_context
 
+    .type swap_context, %function
+    .type save_context, %function
+    .type save_register_context, %function
+    .type restore_register_context, %function
+
 @ R0 Contains a pointer to the TCB of the fibre being scheduled out.
 @ R1 Contains a pointer to the base of the stack of the fibre being scheduled out.
 @ R2 Contains a pointer to the TCB of the fibre being scheduled in.
