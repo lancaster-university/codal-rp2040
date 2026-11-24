@@ -14,6 +14,7 @@
 
 #define jd_tx_wrap_target 0
 #define jd_tx_wrap 3
+#define jd_tx_pio_version 0
 
 static const uint16_t jd_tx_program_instructions[] = {
             //     .wrap_target
@@ -29,6 +30,10 @@ static const struct pio_program jd_tx_program = {
     .instructions = jd_tx_program_instructions,
     .length = 4,
     .origin = -1,
+    .pio_version = 0,
+#if PICO_PIO_VERSION > 0
+    .used_gpio_ranges = 0x0
+#endif
 };
 
 static inline pio_sm_config jd_tx_program_get_default_config(uint offset) {
@@ -45,6 +50,7 @@ static inline pio_sm_config jd_tx_program_get_default_config(uint offset) {
 
 #define jd_rx_wrap_target 0
 #define jd_rx_wrap 10
+#define jd_rx_pio_version 0
 
 static const uint16_t jd_rx_program_instructions[] = {
             //     .wrap_target
@@ -67,6 +73,10 @@ static const struct pio_program jd_rx_program = {
     .instructions = jd_rx_program_instructions,
     .length = 11,
     .origin = -1,
+    .pio_version = 0,
+#if PICO_PIO_VERSION > 0
+    .used_gpio_ranges = 0x0
+#endif
 };
 
 static inline pio_sm_config jd_rx_program_get_default_config(uint offset) {

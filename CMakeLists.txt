@@ -5,13 +5,6 @@ project( codal-rp2040 )
 
 include("${CODAL_UTILS_LOCATION}")
 
-set(HAL_RP2040_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/pico-sdk/src/rp2040")
-set(HAL_RP2_COMMON_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/pico-sdk/src/rp2_common")
-set(HAL_COMMON_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/pico-sdk/src/common")
-set(HAL_HOST_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/pico-sdk/src/host")
-
-# RECURSIVE_FIND_DIR(PROCESSOR_DIR_INCLUDES "${PROCESSOR_INCLUDE_ROOT}", "*.h")
-# RECURSIVE_FIND_DIR(HAL_DIR_INCLUDES "${PROCESSOR_INCLUDES}", "*.h")
 RECURSIVE_FIND_DIR(TOP_LEVEL_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/inc" "*.h")
 RECURSIVE_FIND_FILE(TOP_LEVEL_SOURCE0 "${CMAKE_CURRENT_SOURCE_DIR}/source" "*.cpp")
 RECURSIVE_FIND_FILE(TOP_LEVEL_SOURCE1 "${CMAKE_CURRENT_SOURCE_DIR}/source" "*.c")
@@ -19,20 +12,18 @@ RECURSIVE_FIND_FILE(TOP_LEVEL_SOURCE1 "${CMAKE_CURRENT_SOURCE_DIR}/source" "*.c"
 list(APPEND TOP_LEVEL_SOURCE0 "asm/CortexContextSwitch.s")
 
 set(PICO_SDK_PATH "${CMAKE_CURRENT_SOURCE_DIR}/pico-sdk")
-set(PICO_PLATFORM "RP2040")
-set(PICO_TARGET "PICO")
+set(PICO_PLATFORM "rp2040")
+set(PICO_BOARD "pico")
 set(PICO_CONFIG_HEADER_FILES "${CMAKE_CURRENT_SOURCE_DIR}/inc/sdk_config.h")
+# codal-core provides malloc & friends, do not let pico-sdk wrap them
+set(SKIP_PICO_MALLOC 1)
+# picotool is not needed (UF2 conversion is done by the target), do not let pico-sdk fetch and build it from git
+set(PICO_NO_PICOTOOL 1)
 
-# set(PICO_DEFAULT_BOOT_STAGE2 "boot2_w25q080") # second stage bootloader, read from flash chip
+include(${PICO_SDK_PATH}/pico_sdk_init.cmake)
+pico_sdk_init()
 
-include(pico-util.cmake)
-include(${HAL_COMMON_ROOT}/pico_base/generate_config_header.cmake)
-
-add_subdirectory(${HAL_COMMON_ROOT})
-add_subdirectory(${HAL_RP2_COMMON_ROOT})
-add_subdirectory(${HAL_RP2040_ROOT})
-
-set(TARGET_DEPS 
+set(TARGET_DEPS
     cmsis_core
     hardware_sync
     hardware_irq
@@ -44,24 +35,25 @@ set(TARGET_DEPS
     hardware_flash
     hardware_pio
     hardware_dma
-    hardware_irq
     hardware_regs
     hardware_structs
     hardware_exception
     hardware_divider
+    hardware_timer
+    pico_platform
     pico_runtime
     pico_float
     pico_double)
 
-include_directories(${HAL_INCLUDES})
-
 # create our target
-add_library(codal-rp2040 ${TOP_LEVEL_SOURCE} ${TOP_LEVEL_SOURCE0} ${TOP_LEVEL_SOURCE1} ${HAL_SOURCE})
+add_library(codal-rp2040 ${TOP_LEVEL_SOURCE} ${TOP_LEVEL_SOURCE0} ${TOP_LEVEL_SOURCE1})
 
-target_link_libraries(codal-rp2040 codal-core ${OBJECT_FILES} ${ARCHIVE_FILES} ${TARGET_DEPS})
+target_link_libraries(codal-rp2040 codal-core ${TARGET_DEPS})
 
-#set_target_properties(codal-samd PROPERTIES LINKER_LANGUAGE CXX)
+# Keep the pico-sdk isr_* names for IRQ handlers. Our handlers (isr_timer_0, ...) are otherwise renamed to their CMSIS
+# names (TIMER_IRQ_0_Handler, ...) while the pico-sdk 2.0.0 crt0 vector table keeps referencing isr_irqN, leaving all
+# IRQs on the default handler. Must be a compile definition, it is evaluated when the pico config header is included.
+target_compile_definitions(codal-rp2040 PUBLIC PICO_CMSIS_RENAME_EXCEPTIONS=0)
 
-message("${PROCESSOR_DIR_INCLUDES} ${TOP_LEVEL_INCLUDE_DIRS}")
 # expose it to parent cmake.
-target_include_directories(codal-rp2040 PUBLIC ${TOP_LEVEL_INCLUDE_DIRS} ${PROCESSOR_DIR_INCLUDES} ${HAL_INCLUDES})
+target_include_directories(codal-rp2040 PUBLIC ${TOP_LEVEL_INCLUDE_DIRS})
